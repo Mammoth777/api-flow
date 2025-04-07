@@ -1,8 +1,6 @@
 package engine
 
 import (
-	"errors"
-
 	"api-flow/models"
 )
 
@@ -15,7 +13,7 @@ func NewTextNodeExecutor() *TextNodeExecutor {
 }
 
 // ValidateConfig 验证文本节点配置
-func (e *TextNodeExecutor) ValidateConfig(config models.NodeConfig) error {
+func (e *TextNodeExecutor) ValidateConfig(config models.ItemConfig) error {
 	// if config == nil {
 	// 	return errors.New("配置不能为空")
 	// }
@@ -28,8 +26,16 @@ func (e *TextNodeExecutor) ValidateConfig(config models.NodeConfig) error {
 	return nil
 }
 
+func (e *TextNodeExecutor) newfailExecuteResult(msg string) *ExecuteResult {
+	return &ExecuteResult{
+		Success: false,
+		Data:    nil,
+		Error:   msg,
+	}
+}
+
 // Execute 执行文本节点逻辑
-func (e *TextNodeExecutor) Execute(node *models.Node, inputs map[string]interface{}) (*ExecuteResult, error) {
+func (e *TextNodeExecutor) Execute(node *models.Node, inputs map[string]interface{}) *ExecuteResult {
 	config := node.Config
 
 	// 获取文本内容
@@ -37,14 +43,14 @@ func (e *TextNodeExecutor) Execute(node *models.Node, inputs map[string]interfac
 	if !ok {
 		content, ok = config["content"]
 		if !ok {
-			return nil, errors.New("未找到content字段")
+			return e.newfailExecuteResult("未找到content字段")
 		}
 	}
 
 	// 将content转换为字符串
 	contentStr, ok := content.(string)
 	if !ok {
-		return nil, errors.New("content字段必须是字符串类型")
+		return e.newfailExecuteResult("content字段必须是字符串类型")
 	}
 
 	// 获取内容类型
@@ -60,5 +66,5 @@ func (e *TextNodeExecutor) Execute(node *models.Node, inputs map[string]interfac
 			"output":      "echo: " + contentStr,
 			"content_type": contentType,
 		},
-	}, nil
+	}
 }

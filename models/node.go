@@ -8,11 +8,11 @@ import (
 	"github.com/jinzhu/gorm"
 )
 
-// NodeConfig 节点配置JSON存储结构
-type NodeConfig map[string]interface{}
+// ItemConfig 节点/连线配置JSON存储结构
+type ItemConfig map[string]interface{}
 
 // Value 实现driver.Valuer接口
-func (c NodeConfig) Value() (driver.Value, error) {
+func (c ItemConfig) Value() (driver.Value, error) {
 	if c == nil {
 		return nil, nil
 	}
@@ -21,7 +21,7 @@ func (c NodeConfig) Value() (driver.Value, error) {
 }
 
 // Scan 实现sql.Scanner接口
-func (c *NodeConfig) Scan(value interface{}) error {
+func (c *ItemConfig) Scan(value interface{}) error {
 	if value == nil {
 		*c = nil
 		return nil
@@ -43,12 +43,13 @@ func (c *NodeConfig) Scan(value interface{}) error {
 // Node 节点模型
 type Node struct {
 	gorm.Model
-	NodeType    string     `json:"node_type"`
+	NodeKey     string     `gorm:"size:255;not null" json:"nodeKey"`
+	NodeType    string     `json:"nodeType"`
 	Name        string     `gorm:"size:255;not null" json:"name"`
 	Description string     `gorm:"size:1000" json:"description"`
-	Config      NodeConfig `gorm:"type:json" json:"config"`
+	Config      ItemConfig `gorm:"type:json" json:"config"`
 	Status      string     `gorm:"size:50;default:'active'" json:"status"`
-	WorkflowID  uint       `json:"workflow_id"`
+	WorkflowID  uint       `json:"workflowId"`
 }
 
 // TableName 指定表名

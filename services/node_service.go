@@ -24,7 +24,7 @@ func NewNodeService() *NodeService {
 // GetNodeByID 通过ID获取节点
 func (s *NodeService) GetNodeByID(id uint) (*models.Node, error) {
 	var node models.Node
-	if err := s.DB.Preload("NodeType").First(&node, id).Error; err != nil {
+	if err := s.DB.First(&node, id).Error; err != nil {
 		if gorm.IsRecordNotFoundError(err) {
 			return nil, errors.New("节点不存在")
 		}
@@ -51,7 +51,7 @@ func (s *NodeService) UpdateNode(id uint, node *models.Node) error {
 	// 如果节点类型有更改，验证新节点类型是否存在
 	if node.NodeType != "" && node.NodeType != existingNode.NodeType {
 		var nodeType models.NodeType
-		if err := s.DB.First(&nodeType, node.NodeType).Error; err != nil {
+		if err := s.DB.Where("code = ?", node.NodeType).First(&nodeType).Error; err != nil {
 			if gorm.IsRecordNotFoundError(err) {
 				return errors.New("节点类型不存在")
 			}

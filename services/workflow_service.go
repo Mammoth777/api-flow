@@ -2,6 +2,8 @@ package services
 
 import (
 	"errors"
+	"fmt"
+	"time"
 
 	"github.com/jinzhu/gorm"
 
@@ -13,12 +15,15 @@ import (
 // WorkflowService 流程服务
 type WorkflowService struct {
 	DB *gorm.DB
+	NodeExecutionService *NodeExecutionService
 }
 
 // NewWorkflowService 创建流程服务实例
 func NewWorkflowService() *WorkflowService {
+	nodeService := NewNodeService()
 	return &WorkflowService{
 		DB: database.DB,
+		NodeExecutionService: NewNodeExecutionService(nodeService),
 	}
 }
 
@@ -91,8 +96,11 @@ func (s *WorkflowService) DeleteWorkflow(id uint) error {
 	return s.DB.Delete(&workflow).Error
 }
 
-// SaveWorkflowWithNodes 保存工作流及其节点
-func (s *WorkflowService) SaveWorkflowWithNodes(workflowDto *dto.WorkflowDTO) (*dto.WorkflowDTO, error) {
+// SaveWorkflow 保存工作流及其节点和连线
+func (s *WorkflowService) SaveWorkflow(workflowDto *dto.WorkflowDTO) (*dto.WorkflowDTO, error) {
+	if err := s.flowValidate(workflowDto); err != nil {
+		return nil, err
+	}
 	// 开启事务
 	tx := s.DB.Begin()
 	defer func() {
@@ -115,7 +123,7 @@ func (s *WorkflowService) SaveWorkflowWithNodes(workflowDto *dto.WorkflowDTO) (*
 
 	// 为每个节点设置工作流ID
 	for i := range workflowDto.Nodes {
-		workflowDto.Nodes[i].WorkflowID = workflowDto.ID
+		workflowDto.Nodes[i].WorkflowID = workflow.ID
 
 		// 验证节点类型是否存在
 		var nodeType models.NodeType
@@ -136,6 +144,15 @@ func (s *WorkflowService) SaveWorkflowWithNodes(workflowDto *dto.WorkflowDTO) (*
 		}
 	}
 
+	// 保存所有连线
+	for i := range workflowDto.Edges {
+		workflowDto.Edges[i].WorkflowID = workflow.ID
+		if err := tx.Create(&workflowDto.Edges[i]).Error; err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+	}
+
 	// 提交事务
 	if err := tx.Commit().Error; err != nil {
 		return nil, err
@@ -143,15 +160,80 @@ func (s *WorkflowService) SaveWorkflowWithNodes(workflowDto *dto.WorkflowDTO) (*
 
 	// 构建响应
 	response := &dto.WorkflowDTO{
-		ID:          workflowDto.ID,
-		Name:        workflowDto.Name,
-		Description: workflowDto.Description,
+		ID:          workflow.ID,
+		Name:        workflow.Name,
+		Description: workflow.Description,
 		CreatedAt:   workflow.CreatedAt.Format("2006-01-02 15:04:05"),
 		UpdatedAt:   workflow.UpdatedAt.Format("2006-01-02 15:04:05"),
 		Nodes:       workflowDto.Nodes,
+		Edges: 		 	 workflowDto.Edges,
 	}
 
 	return response, nil
+}
+
+func (s *WorkflowService) flowValidate(workflowDto *dto.WorkflowDTO) error {
+	// 检查工作流名称是否为空
+	if workflowDto.Name == "" {
+		return errors.New("工作流名称不能为空")
+	}
+
+	// 检查节点是否存在
+	for _, node := range workflowDto.Nodes {
+		if node.NodeKey == "" {
+			return errors.New("节点键不能为空")
+		}
+	}
+
+	// 检查连线是否存在
+	for _, edge := range workflowDto.Edges {
+		if edge.SourceNodeKey == "" || edge.TargetNodeKey == "" {
+			return errors.New("连线的源节点和目标节点不能为空")
+		}
+	}
+
+	// 检查循环依赖
+	if err := s.checkCircularDependency(workflowDto.Edges); err != nil {
+		return errors.New("工作流存在循环依赖")
+	}
+
+	return nil
+}
+
+func (s *WorkflowService) checkCircularDependency(edges []models.Edge) error {
+	// 构建邻接表
+	graph := make(map[string][]string)
+	for _, edge := range edges {
+		graph[edge.SourceNodeKey] = append(graph[edge.SourceNodeKey], edge.TargetNodeKey)
+	}
+	// 深度优先搜索
+	visited := make(map[string]bool)
+	recStack := make(map[string]bool)
+	var dfs func(node string) bool
+	dfs = func(node string) bool {
+		if !visited[node] {
+			visited[node] = true
+			recStack[node] = true
+
+			for _, neighbor := range graph[node] {
+				if !visited[neighbor] && dfs(neighbor) {
+					return true
+				} else if recStack[neighbor] {
+					return true
+				}
+			}
+		}
+		recStack[node] = false
+		return false
+	}
+	for node := range graph {
+		if !visited[node] {
+			if dfs(node) {
+				return errors.New("工作流存在循环依赖")
+			}
+		}
+	}
+	return nil
 }
 
 // GetWorkflowWithNodes 获取工作流及其关联节点
@@ -179,4 +261,105 @@ func (s *WorkflowService) GetWorkflowWithNodes(workflowID uint) (*dto.WorkflowDT
 	}
 
 	return response, nil
+}
+
+// ExecuteWorkflow 执行工作流
+func (s *WorkflowService) ExecuteWorkflow(request *dto.WorkflowExecutionRequest) (*dto.WorkflowExecutionResult, error) {
+	startTime := time.Now()
+	
+	// 获取工作流信息
+	workflow, err := s.GetWorkflowByID(request.WorkflowID)
+	if err != nil {
+		return nil, fmt.Errorf("获取工作流失败: %v", err)
+	}
+	
+	// 获取工作流的所有节点
+	var nodes []models.Node
+	if err := s.DB.Where("workflow_id = ?", request.WorkflowID).Find(&nodes).Error; err != nil {
+		return nil, fmt.Errorf("获取工作流节点失败: %v", err)
+	}
+	
+	// 获取工作流的所有连线
+	var edges []models.Edge
+	if err := s.DB.Where("workflow_id = ?", request.WorkflowID).Find(&edges).Error; err != nil {
+		return nil, fmt.Errorf("获取工作流连线失败: %v", err)
+	}
+	
+	// 建立节点映射，方便快速查找
+	nodeMap := make(map[string]*models.Node)
+	for i := range nodes {
+		nodeMap[nodes[i].NodeKey] = &nodes[i]
+	}
+	
+	// 存储节点执行结果
+	nodeResults := make([]dto.NodeExecutionResult, 0)
+	
+	// 获取起始节点列表
+	startNodes, err := s.getStartNodeKeyList(nodes, edges)
+	if err != nil {
+		return nil, err
+	}
+	
+	var success bool = true
+	var errorMessage string
+	
+	// 按顺序执行节点
+	for _, startNodeKey := range startNodes {
+		node := nodeMap[startNodeKey]
+		if node == nil {
+			return nil, fmt.Errorf("节点 %s 不存在", startNodeKey)
+		}
+		// 执行节点
+		result, err := s.NodeExecutionService.ExecuteNode(node.ID, request.Inputs)
+		nodeResult := dto.NodeExecutionResult{
+			NodeID:  node.ID,
+			NodeKey: node.NodeKey,
+			Result: result,
+		}
+		nodeResults = append(nodeResults, nodeResult)
+		if err != nil {
+			success = false
+			errorMessage = fmt.Sprintf("节点 %s 执行失败: %v", node.NodeKey, err)
+			break
+		}
+	}
+	
+	// 构建工作流执行结果
+	executionResult := &dto.WorkflowExecutionResult{
+		WorkflowID:    workflow.ID,
+		WorkflowName:  workflow.Name,
+		Success:       success,
+		NodeResults:   nodeResults,
+		ErrorMessage:  errorMessage,
+		ExecutionTime: time.Since(startTime).String(),
+	}
+	
+	return executionResult, nil
+}
+
+// getStartNodeKeyList 获取工作流的起始节点列表
+func (s *WorkflowService) getStartNodeKeyList(nodes []models.Node, edges []models.Edge) ([]string, error) {
+	if len(nodes) == 0 {
+		return nil, errors.New("工作流没有节点")
+	}
+	startNodeKeyList := make([]string, 0);
+	// 使用map来存储每个节点的入度
+	inDegree := make(map[string]int)
+	for _, node := range nodes {
+		inDegree[node.NodeKey] = 0
+	}
+
+	// 计算每个节点的入度
+	for _, edge := range edges {
+		inDegree[edge.TargetNodeKey]++
+	}
+
+	// 找到入度为0的节点
+	for key, val := range inDegree {
+		if val == 0 {
+			startNodeKeyList = append(startNodeKeyList, key)
+		}
+	}
+	
+	return startNodeKeyList, nil
 }

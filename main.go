@@ -38,6 +38,10 @@ func main() {
 		log.Fatalf("节点表迁移失败: %v", err)
 	}
 
+	if err = models.MigrateEdge(database.DB); err != nil {
+		log.Fatalf("连线表迁移失败: %v", err)
+	}
+
 	// 设置路由
 	r := router.SetupRouter()
 

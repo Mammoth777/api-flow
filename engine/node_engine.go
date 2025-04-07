@@ -12,13 +12,12 @@ type ExecuteResult struct {
 	Success    bool        `json:"success"`
 	Data       interface{} `json:"data,omitempty"`
 	Error      string      `json:"error,omitempty"`
-	StatusCode int         `json:"status_code,omitempty"`
 }
 
 // NodeExecutor 节点执行器接口
 type NodeExecutor interface {
-	Execute(node *models.Node, inputs map[string]interface{}) (*ExecuteResult, error)
-	ValidateConfig(config models.NodeConfig) error
+	Execute(node *models.Node, inputs map[string]interface{}) *ExecuteResult
+	ValidateConfig(config models.ItemConfig) error
 }
 
 // NodeEngine 节点执行引擎
@@ -74,5 +73,5 @@ func (e *NodeEngine) ExecuteNode(node *models.Node, inputs map[string]interface{
 	}
 	
 	// 执行节点
-	return executor.Execute(node, inputs)
+	return executor.Execute(node, inputs), nil
 }

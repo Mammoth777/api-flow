@@ -29,7 +29,7 @@ func NewAPINodeExecutor() *APINodeExecutor {
 }
 
 // ValidateConfig 验证API节点配置
-func (e *APINodeExecutor) ValidateConfig(config models.NodeConfig) error {
+func (e *APINodeExecutor) ValidateConfig(config models.ItemConfig) error {
 	if config == nil {
 		return errors.New("配置不能为空")
 	}
@@ -53,8 +53,16 @@ func (e *APINodeExecutor) ValidateConfig(config models.NodeConfig) error {
 	return nil
 }
 
+func (e *APINodeExecutor) newFailExecuteResult(msg string) *ExecuteResult {
+	return &ExecuteResult{
+		Success: false,
+		Data: nil,
+		Error: msg,
+	}
+}
+
 // Execute 执行API请求
-func (e *APINodeExecutor) Execute(node *models.Node, inputs map[string]interface{}) (*ExecuteResult, error) {
+func (e *APINodeExecutor) Execute(node *models.Node, inputs map[string]interface{}) *ExecuteResult {
 	config := node.Config
 
 	// 获取URL和方法
@@ -65,7 +73,7 @@ func (e *APINodeExecutor) Execute(node *models.Node, inputs map[string]interface
 	// 处理URL模板
 	url, err := renderTemplate(urlTpl, inputs)
 	if err != nil {
-		return nil, fmt.Errorf("渲染URL模板失败: %v", err)
+		return e.newFailExecuteResult(fmt.Sprintf("渲染URL模板失败: %v", err))
 	}
 
 	// 准备请求体
@@ -75,14 +83,14 @@ func (e *APINodeExecutor) Execute(node *models.Node, inputs map[string]interface
 			// 渲染请求体模板
 			renderedBody, err := renderTemplate(bodyStr, inputs)
 			if err != nil {
-				return nil, fmt.Errorf("渲染请求体模板失败: %v", err)
+				return e.newFailExecuteResult(fmt.Sprintf("渲染请求体模板失败: %v", err))
 			}
 			reqBody = []byte(renderedBody)
 		} else {
 			// 非字符串类型的请求体，直接序列化为JSON
 			reqBody, err = json.Marshal(body)
 			if err != nil {
-				return nil, fmt.Errorf("序列化请求体失败: %v", err)
+				return e.newFailExecuteResult(fmt.Sprintf("序列化请求体失败: %v", err))
 			}
 		}
 	}
@@ -90,7 +98,7 @@ func (e *APINodeExecutor) Execute(node *models.Node, inputs map[string]interface
 	// 创建HTTP请求
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(reqBody))
 	if err != nil {
-		return nil, fmt.Errorf("创建HTTP请求失败: %v", err)
+		return e.newFailExecuteResult(fmt.Sprintf("创建HTTP请求失败: %v", err))
 	}
 
 	// 设置请求头
@@ -106,14 +114,14 @@ func (e *APINodeExecutor) Execute(node *models.Node, inputs map[string]interface
 	// 执行请求
 	resp, err := e.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("执行HTTP请求失败: %v", err)
+		return e.newFailExecuteResult(fmt.Sprintf("执行HTTP请求失败: %v", err))
 	}
 	defer resp.Body.Close()
 
 	// 读取响应
 	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("读取响应失败: %v", err)
+		return e.newFailExecuteResult(fmt.Sprintf("读取响应失败: %v", err))
 	}
 
 	// 解析JSON响应
@@ -127,8 +135,7 @@ func (e *APINodeExecutor) Execute(node *models.Node, inputs map[string]interface
 	return &ExecuteResult{
 		Success:    resp.StatusCode >= 200 && resp.StatusCode < 300,
 		Data:       responseData,
-		StatusCode: resp.StatusCode,
-	}, nil
+	}
 }
 
 // renderTemplate 使用输入数据渲染模板字符串

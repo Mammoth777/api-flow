@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 
@@ -109,12 +110,41 @@ func (h *WorkflowHandler) CreateWithNodes(c *gin.Context) {
 		return
 	}
 
-	response, err := h.workflowService.SaveWorkflowWithNodes(&workflowDTO)
+	response, err := h.workflowService.SaveWorkflow(&workflowDTO)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusCreated, response)
+}
+
+// ExecuteWorkflow 执行工作流
+func (h *WorkflowHandler) ExecuteWorkflow(c *gin.Context) {
+	log.Println("执行工作流")
+	var request dto.WorkflowExecutionRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var result *dto.WorkflowExecutionResult
+	var err error
+	if request.Sync {
+		// 执行同步工作流
+		result, err = h.workflowService.ExecuteWorkflow(&request)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+	} else {
+		// 执行异步工作流
+		log.Fatalln("异步执行工作流的逻辑尚未实现")
+		c.JSON(http.StatusNotImplemented, gin.H{"error": "异步执行工作流的逻辑尚未实现"})
+		return
+	}
+
+
+	c.JSON(http.StatusOK, result)
 }
 
