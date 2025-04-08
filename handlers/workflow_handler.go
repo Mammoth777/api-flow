@@ -8,7 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"api-flow/dto"
-	"api-flow/models"
 	"api-flow/services"
 )
 
@@ -71,7 +70,7 @@ func (h *WorkflowHandler) Update(c *gin.Context) {
 		return
 	}
 
-	var workflow models.Workflow
+	var workflow dto.WorkflowDTO
 	if err := c.ShouldBindJSON(&workflow); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

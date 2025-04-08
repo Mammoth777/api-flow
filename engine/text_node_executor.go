@@ -26,8 +26,10 @@ func (e *TextNodeExecutor) ValidateConfig(config models.ItemConfig) error {
 	return nil
 }
 
-func (e *TextNodeExecutor) newfailExecuteResult(msg string) *ExecuteResult {
+func (e *TextNodeExecutor) newfailExecuteResult(node *models.Node, msg string) *ExecuteResult {
 	return &ExecuteResult{
+		NodeID: node.ID,
+		NodeKey: node.NodeKey,
 		Success: false,
 		Data:    nil,
 		Error:   msg,
@@ -43,14 +45,14 @@ func (e *TextNodeExecutor) Execute(node *models.Node, inputs map[string]interfac
 	if !ok {
 		content, ok = config["content"]
 		if !ok {
-			return e.newfailExecuteResult("未找到content字段")
+			return e.newfailExecuteResult(node, "未找到content字段")
 		}
 	}
 
 	// 将content转换为字符串
 	contentStr, ok := content.(string)
 	if !ok {
-		return e.newfailExecuteResult("content字段必须是字符串类型")
+		return e.newfailExecuteResult(node, "content字段必须是字符串类型")
 	}
 
 	// 获取内容类型
@@ -61,6 +63,8 @@ func (e *TextNodeExecutor) Execute(node *models.Node, inputs map[string]interfac
 
 	// 返回执行结果
 	return &ExecuteResult{
+		NodeID:  node.ID,
+		NodeKey: node.NodeKey,
 		Success: true,
 		Data: map[string]interface{}{
 			"output":      "echo: " + contentStr,

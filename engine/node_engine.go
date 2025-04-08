@@ -9,9 +9,11 @@ import (
 
 // ExecuteResult 节点执行结果
 type ExecuteResult struct {
-	Success    bool        `json:"success"`
-	Data       interface{} `json:"data,omitempty"`
-	Error      string      `json:"error,omitempty"`
+	NodeID  uint                   `json:"nodeId"`
+	NodeKey string                 `json:"nodeKey"`
+	Success bool                   `json:"success"`
+	Data    map[string]interface{} `json:"data,omitempty"`
+	Error   string                 `json:"error,omitempty"`
 }
 
 // NodeExecutor 节点执行器接口
@@ -30,11 +32,11 @@ func NewNodeEngine() *NodeEngine {
 	engine := &NodeEngine{
 		executors: make(map[string]NodeExecutor),
 	}
-	
+
 	// 注册默认执行器
 	engine.RegisterExecutor(models.NodeTypeAPI, NewAPINodeExecutor())
 	engine.RegisterExecutor(models.NodeTypeText, NewTextNodeExecutor())
-	
+
 	return engine
 }
 
@@ -57,21 +59,21 @@ func (e *NodeEngine) ExecuteNode(node *models.Node, inputs map[string]interface{
 	if node == nil {
 		return nil, errors.New("节点不能为空")
 	}
-	
+
 	if node.NodeType == "" {
 		return nil, errors.New("节点类型未设置")
 	}
-	
+
 	executor, err := e.GetExecutor(node.NodeType)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// 验证节点配置
 	if err := executor.ValidateConfig(node.Config); err != nil {
 		return nil, fmt.Errorf("节点配置无效: %v", err)
 	}
-	
+
 	// 执行节点
 	return executor.Execute(node, inputs), nil
 }

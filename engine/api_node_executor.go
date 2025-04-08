@@ -133,8 +133,12 @@ func (e *APINodeExecutor) Execute(node *models.Node, inputs map[string]interface
 
 	// 返回执行结果
 	return &ExecuteResult{
+		NodeID: node.ID,
+		NodeKey: node.NodeKey,
 		Success:    resp.StatusCode >= 200 && resp.StatusCode < 300,
-		Data:       responseData,
+		Data:  map[string]interface{}{
+			"apiResponse": responseData,
+		},
 	}
 }
 

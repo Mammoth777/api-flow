@@ -9,12 +9,13 @@ import (
 
 	"api-flow/database"
 	"api-flow/dto"
+	"api-flow/engine"
 	"api-flow/models"
 )
 
 // WorkflowService 流程服务
 type WorkflowService struct {
-	DB *gorm.DB
+	DB                   *gorm.DB
 	NodeExecutionService *NodeExecutionService
 }
 
@@ -22,7 +23,7 @@ type WorkflowService struct {
 func NewWorkflowService() *WorkflowService {
 	nodeService := NewNodeService()
 	return &WorkflowService{
-		DB: database.DB,
+		DB:                   database.DB,
 		NodeExecutionService: NewNodeExecutionService(nodeService),
 	}
 }
@@ -63,7 +64,7 @@ func (s *WorkflowService) GetAllWorkflows(page, size int) ([]models.Workflow, in
 }
 
 // UpdateWorkflow 更新流程
-func (s *WorkflowService) UpdateWorkflow(id uint, workflow *models.Workflow) error {
+func (s *WorkflowService) UpdateWorkflow(id uint, workflow *dto.WorkflowDTO) error {
 	// 先检查记录是否存在且未被删除
 	existingWorkflow := &models.Workflow{}
 	if err := s.DB.Where("id = ? AND deleted_at IS NULL", id).First(existingWorkflow).Error; err != nil {
@@ -73,12 +74,59 @@ func (s *WorkflowService) UpdateWorkflow(id uint, workflow *models.Workflow) err
 		return err
 	}
 
-	// 只更新指定的字段，避免更新ID和时间戳字段
-	return s.DB.Model(existingWorkflow).Updates(map[string]interface{}{
+	tx := s.DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 更新流程的基本信息
+	updateWorkflowBasic := tx.Model(existingWorkflow).Updates(map[string]interface{}{
 		"name":        workflow.Name,
 		"description": workflow.Description,
 		"status":      workflow.Status,
-	}).Error
+	})
+	if updateWorkflowBasic.Error != nil {
+		tx.Rollback()
+		return updateWorkflowBasic.Error
+	}
+
+	// 更新节点
+	for _, node := range workflow.Nodes {
+		updateNodes := tx.Model(&node).Where("id = ?", node.ID).Update(map[string]interface{}{
+			"nodeKey": node.NodeKey,
+			"nodeType": node.NodeType,
+			"name": node.Name,
+			"description": node.Description,
+			"config": node.Config,
+			"status": node.Status,
+		})
+		if updateNodes.Error != nil {
+			tx.Rollback()
+			return updateNodes.Error
+		}
+	}
+
+	// 更新连线
+	for _, edge := range workflow.Edges {
+		updateEdges := tx.Model(&edge).Where("id = ?", edge.ID).Update(map[string]interface{}{
+			"sourceNodeKey": edge.SourceNodeKey,
+			"targetNodeKey": edge.TargetNodeKey,
+			"workflowID":    edge.WorkflowID,
+		})
+		if updateEdges.Error != nil {
+			tx.Rollback()
+			return updateEdges.Error
+		}
+	}
+	// 提交事务
+	if err := tx.Commit().Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+	return nil
+	
 }
 
 // DeleteWorkflow 删除流程 (软删除)
@@ -166,7 +214,7 @@ func (s *WorkflowService) SaveWorkflow(workflowDto *dto.WorkflowDTO) (*dto.Workf
 		CreatedAt:   workflow.CreatedAt.Format("2006-01-02 15:04:05"),
 		UpdatedAt:   workflow.UpdatedAt.Format("2006-01-02 15:04:05"),
 		Nodes:       workflowDto.Nodes,
-		Edges: 		 	 workflowDto.Edges,
+		Edges:       workflowDto.Edges,
 	}
 
 	return response, nil
@@ -246,7 +294,7 @@ func (s *WorkflowService) GetWorkflowWithNodes(workflowID uint) (*dto.WorkflowDT
 
 	// 获取关联的节点
 	var nodes []models.Node
-	if err := s.DB.Where("workflow_id = ?", workflowID).Preload("NodeType").Find(&nodes).Error; err != nil {
+	if err := s.DB.Where("workflow_id = ?", workflowID).Find(&nodes).Error; err != nil {
 		return nil, err
 	}
 
@@ -266,64 +314,48 @@ func (s *WorkflowService) GetWorkflowWithNodes(workflowID uint) (*dto.WorkflowDT
 // ExecuteWorkflow 执行工作流
 func (s *WorkflowService) ExecuteWorkflow(request *dto.WorkflowExecutionRequest) (*dto.WorkflowExecutionResult, error) {
 	startTime := time.Now()
-	
+
 	// 获取工作流信息
 	workflow, err := s.GetWorkflowByID(request.WorkflowID)
 	if err != nil {
 		return nil, fmt.Errorf("获取工作流失败: %v", err)
 	}
-	
+
 	// 获取工作流的所有节点
 	var nodes []models.Node
 	if err := s.DB.Where("workflow_id = ?", request.WorkflowID).Find(&nodes).Error; err != nil {
 		return nil, fmt.Errorf("获取工作流节点失败: %v", err)
 	}
-	
+
 	// 获取工作流的所有连线
 	var edges []models.Edge
 	if err := s.DB.Where("workflow_id = ?", request.WorkflowID).Find(&edges).Error; err != nil {
 		return nil, fmt.Errorf("获取工作流连线失败: %v", err)
 	}
-	
+
 	// 建立节点映射，方便快速查找
 	nodeMap := make(map[string]*models.Node)
 	for i := range nodes {
 		nodeMap[nodes[i].NodeKey] = &nodes[i]
 	}
-	
-	// 存储节点执行结果
-	nodeResults := make([]dto.NodeExecutionResult, 0)
-	
-	// 获取起始节点列表
-	startNodes, err := s.getStartNodeKeyList(nodes, edges)
-	if err != nil {
-		return nil, err
-	}
-	
+
 	var success bool = true
 	var errorMessage string
-	
-	// 按顺序执行节点
-	for _, startNodeKey := range startNodes {
-		node := nodeMap[startNodeKey]
-		if node == nil {
-			return nil, fmt.Errorf("节点 %s 不存在", startNodeKey)
-		}
-		// 执行节点
-		result, err := s.NodeExecutionService.ExecuteNode(node.ID, request.Inputs)
-		nodeResult := dto.NodeExecutionResult{
-			NodeID:  node.ID,
-			NodeKey: node.NodeKey,
-			Result: result,
-		}
-		nodeResults = append(nodeResults, nodeResult)
-		if err != nil {
-			success = false
-			errorMessage = fmt.Sprintf("节点 %s 执行失败: %v", node.NodeKey, err)
-			break
+
+	// 执行节点
+	nodeResults, err := s.executeNodes(nodes, edges, request.Inputs)
+	if err != nil {
+		success = false
+		errorMessage = fmt.Sprintf("执行节点失败: %v", err)
+	} else {
+		for _, result := range nodeResults {
+			if !result.Success {
+				success = false
+				errorMessage += fmt.Sprintf("节点 %s 执行失败: %s\n", result.NodeKey, result.Error)
+			}
 		}
 	}
-	
+
 	// 构建工作流执行结果
 	executionResult := &dto.WorkflowExecutionResult{
 		WorkflowID:    workflow.ID,
@@ -333,8 +365,71 @@ func (s *WorkflowService) ExecuteWorkflow(request *dto.WorkflowExecutionRequest)
 		ErrorMessage:  errorMessage,
 		ExecutionTime: time.Since(startTime).String(),
 	}
-	
+
 	return executionResult, nil
+}
+
+func (s *WorkflowService) executeNodes(nodes []models.Node, edges []models.Edge, inputs map[string]interface{}) ([]engine.ExecuteResult, error) {
+	// 建立节点映射，方便快速查找
+	nodeMap := make(map[string]*models.Node)
+	for i := range nodes {
+		nodeMap[nodes[i].NodeKey] = &nodes[i]
+	}
+	// 获取起始节点列表
+	startNodes, err := s.getStartNodeKeyList(nodes, edges)
+	if err != nil {
+		return nil, err
+	}
+	toBeExecuted := make(chan string, len(nodes))
+	for _, startNodeKey := range startNodes {
+		toBeExecuted <- startNodeKey
+	}
+	var getNextNodeKeys = func(nodeKey string) []string {
+		nextNodes := make([]string, 0)
+		for _, edge := range edges {
+			if edge.SourceNodeKey == nodeKey {
+				nextNodes = append(nextNodes, edge.TargetNodeKey)
+			}
+		}
+		return nextNodes
+	}
+	results := make([]engine.ExecuteResult, 0)
+nodeloop:
+	for {
+		select {
+		case nodeKey, ok := <-toBeExecuted:
+			if !ok {
+				fmt.Println("读取节点异常")
+				return nil, errors.New("读取节点异常")
+			}
+			node := nodeMap[nodeKey]
+			result, err := s.NodeExecutionService.ExecuteNode(node, inputs, results)
+			if err != nil {
+				return nil, fmt.Errorf("节点 %s 执行失败: %v", node.NodeKey, err)
+			}
+			results = append(results, engine.ExecuteResult{
+				NodeID:  node.ID,
+				NodeKey: node.NodeKey,
+				Success: result.Success,
+				Data:    result.Data,
+				Error:   result.Error,
+			})
+			nextKeys := getNextNodeKeys(nodeKey)
+			for _, nextKey := range nextKeys {
+				if _, ok := nodeMap[nextKey]; ok {
+					toBeExecuted <- nextKey
+				} else {
+					fmt.Printf("节点 %s 不存在\n", nextKey)
+				}
+			}
+		default:
+			if len(toBeExecuted) == 0 {
+				close(toBeExecuted)
+				break nodeloop
+			}
+		}
+	}
+	return results, nil
 }
 
 // getStartNodeKeyList 获取工作流的起始节点列表
@@ -342,7 +437,7 @@ func (s *WorkflowService) getStartNodeKeyList(nodes []models.Node, edges []model
 	if len(nodes) == 0 {
 		return nil, errors.New("工作流没有节点")
 	}
-	startNodeKeyList := make([]string, 0);
+	startNodeKeyList := make([]string, 0)
 	// 使用map来存储每个节点的入度
 	inDegree := make(map[string]int)
 	for _, node := range nodes {
@@ -360,6 +455,6 @@ func (s *WorkflowService) getStartNodeKeyList(nodes []models.Node, edges []model
 			startNodeKeyList = append(startNodeKeyList, key)
 		}
 	}
-	
+
 	return startNodeKeyList, nil
 }

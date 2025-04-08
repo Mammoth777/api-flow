@@ -99,7 +99,7 @@ func (h *NodeHandler) Execute(c *gin.Context) {
 	}
 
 	// 执行节点
-	result, err := h.nodeExecutionService.ExecuteNode(uint(id), inputs)
+	result, err := h.nodeExecutionService.ExecuteNodeWithoutWorkflow(uint(id), inputs)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

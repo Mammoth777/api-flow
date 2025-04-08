@@ -30,19 +30,12 @@ type WorkflowExecutionRequest struct {
 	Inputs     map[string]interface{} `json:"inputs"`
 }
 
-// NodeExecutionResult 节点执行结果
-type NodeExecutionResult struct {
-	NodeID	 uint                  `json:"nodeId"`
-	NodeKey  string                `json:"nodeKey"`
-	Result   *engine.ExecuteResult `json:"result"`
-}
-
 // WorkflowExecutionResult 工作流执行结果
 type WorkflowExecutionResult struct {
-	WorkflowID    uint                  `json:"workflow_id"`
-	WorkflowName  string                `json:"workflow_name"`
-	Success       bool                  `json:"success"`
-	NodeResults   []NodeExecutionResult `json:"node_results"`
-	ErrorMessage  string                `json:"error_message,omitempty"`
-	ExecutionTime string                `json:"execution_time"`
+	WorkflowID    uint                   `json:"workflow_id"`
+	WorkflowName  string                 `json:"workflow_name"`
+	Success       bool                   `json:"success"`
+	NodeResults   []engine.ExecuteResult `json:"node_results"`
+	ErrorMessage  string                 `json:"error_message,omitempty"`
+	ExecutionTime string                 `json:"execution_time"`
 }
