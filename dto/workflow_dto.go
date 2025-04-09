@@ -32,10 +32,10 @@ type WorkflowExecutionRequest struct {
 
 // WorkflowExecutionResult 工作流执行结果
 type WorkflowExecutionResult struct {
-	WorkflowID    uint                   `json:"workflow_id"`
-	WorkflowName  string                 `json:"workflow_name"`
+	WorkflowID    uint                   `json:"workflowId"`
+	WorkflowName  string                 `json:"workflowName"`
 	Success       bool                   `json:"success"`
-	NodeResults   []engine.ExecuteResult `json:"node_results"`
-	ErrorMessage  string                 `json:"error_message,omitempty"`
+	NodeResults   []engine.ExecuteResult `json:"nodeResults"`
+	ErrorMessage  string                 `json:"errorMessage,omitempty"`
 	ExecutionTime string                 `json:"execution_time"`
 }
