@@ -1,5 +1,3 @@
-# Vue 3 + TypeScript + Vite
+# Geminate
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
-
-Learn more about the recommended Project Setup and IDE Support in the [Vue Docs TypeScript Guide](https://vuejs.org/guide/typescript/overview.html#project-setup).
+> Geminate is inspired by the iconic skill "Geminate Attack" from Weaver in Dota 2. Just as Weaver's ability to strike twice in one attack with precision and efficiency, our tool "Geminate" is designed to handle dual tasks and data streams with the same level of agility and power. It embodies the essence of doubling up on efficiency and capability, making complex API orchestration and SQL data flow management seamless and swift.

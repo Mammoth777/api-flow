@@ -5,13 +5,10 @@
       <button class="close-button" @click="$emit('close')">&times;</button>
     </div>
     <div class="inspector-body">
+      <!-- 显示节点类型（只读） -->
       <div class="form-group">
         <label>节点类型</label>
-        <select v-model="nodeData.nodeType" @change="updateNode">
-          <option v-for="type in availableNodeTypes" :key="type.code" :value="type.code">
-            {{ type.name }}
-          </option>
-        </select>
+        <input type="text" :value="nodeData.nodeType" disabled class="readonly-input" />
       </div>
       
       <div class="form-group">
@@ -37,14 +34,20 @@
           {{ configError }}
         </div>
       </div>
+      
+      <!-- 添加删除节点按钮 -->
+      <div class="node-actions">
+        <button class="delete-node-btn" @click="confirmDeleteNode">删除节点</button>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { ref, watch } from 'vue';
 import { Cell } from '@antv/x6';
 import type { NodeType } from '../services/node-type.service';
+import { showConfirm } from '../utils/alert';
 
 // Props 定义，使用默认值防止空引用
 const props = defineProps({
@@ -58,7 +61,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['close', 'nodeUpdated']);
+const emit = defineEmits(['close', 'nodeUpdated', 'deleteNode']);
 
 // 表单数据，使用安全的默认值
 const nodeData = ref({
@@ -71,11 +74,6 @@ const nodeData = ref({
 // JSON 配置编辑器
 const configStr = ref('{}');
 const configError = ref('');
-
-// 获取可用的节点类型，添加计算属性以处理空值
-const availableNodeTypes = computed(() => {
-  return props.nodeTypes || [];
-});
 
 // 重置表单为默认值 - 移到这里以便在 watch 中使用
 const resetForm = () => {
@@ -162,6 +160,20 @@ const updateConfig = () => {
   } catch (err) {
     configError.value = '无效的 JSON 格式';
   }
+};
+
+// 确认并删除节点
+const confirmDeleteNode = () => {
+  if (!props.selectedNode) return;
+  
+  showConfirm('删除节点', '确定要删除此节点吗？此操作无法撤销。', '删除').then((result) => {
+    if (result.isConfirmed) {
+      // 发送删除节点事件给父组件处理
+      emit('deleteNode', props.selectedNode);
+      // 关闭节点编辑器
+      emit('close');
+    }
+  });
 };
 </script>
 
@@ -254,5 +266,32 @@ const updateConfig = () => {
   color: #f5222d;
   font-size: 12px;
   margin-top: 4px;
+}
+
+.readonly-input {
+  background-color: #f5f5f5;
+  color: #666;
+  cursor: not-allowed;
+}
+
+.node-actions {
+  margin-top: 24px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.delete-node-btn {
+  background-color: #ff4d4f;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.3s;
+}
+
+.delete-node-btn:hover {
+  background-color: #ff7875;
 }
 </style>

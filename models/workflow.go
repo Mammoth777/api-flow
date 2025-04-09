@@ -6,7 +6,7 @@ import (
 
 // Workflow 流程模型
 type Workflow struct {
-	gorm.Model
+	BasicModel
 	Name        string `gorm:"size:255;not null" json:"name"`
 	Description string `gorm:"size:1000" json:"description"`
 	Status      string `gorm:"size:50" json:"status"`

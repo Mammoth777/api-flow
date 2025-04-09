@@ -62,26 +62,17 @@ func (h *WorkflowHandler) List(c *gin.Context) {
 }
 
 // Update 更新流程
-func (h *WorkflowHandler) Update(c *gin.Context) {
-	idStr := c.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的ID参数"})
-		return
-	}
-
-	var workflow dto.WorkflowDTO
-	if err := c.ShouldBindJSON(&workflow); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
+func (h *WorkflowHandler) update(c *gin.Context, workflow dto.WorkflowDTO) {
+	id := workflow.ID
 	if err := h.workflowService.UpdateWorkflow(uint(id), &workflow); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "流程更新成功"})
+	c.JSON(http.StatusOK, gin.H{
+		"message": "流程更新成功",
+		"id":      id,
+	})
 }
 
 // Delete 删除流程
@@ -101,21 +92,32 @@ func (h *WorkflowHandler) Delete(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "流程删除成功"})
 }
 
-// CreateWithNodes 创建工作流及其节点
-func (h *WorkflowHandler) CreateWithNodes(c *gin.Context) {
+// Save 保存流程
+func (h *WorkflowHandler) Save(c *gin.Context) {
 	var workflowDTO dto.WorkflowDTO
 	if err := c.ShouldBindJSON(&workflowDTO); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	if workflowDTO.ID != 0 {
+		h.update(c, workflowDTO)
+	} else {
+		h.createWithNodes(c, workflowDTO)
+	}
+}
 
+// CreateWithNodes 创建工作流及其节点
+func (h *WorkflowHandler) createWithNodes(c *gin.Context, workflowDTO dto.WorkflowDTO) {
 	response, err := h.workflowService.SaveWorkflow(&workflowDTO)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusCreated, response)
+	c.JSON(http.StatusOK, gin.H{
+		"message": "工作流创建成功",
+		"id":      response.ID,
+	})
 }
 
 // ExecuteWorkflow 执行工作流
@@ -143,7 +145,5 @@ func (h *WorkflowHandler) ExecuteWorkflow(c *gin.Context) {
 		return
 	}
 
-
 	c.JSON(http.StatusOK, result)
 }
-

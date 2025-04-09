@@ -6,10 +6,11 @@ import (
 
 // NodeType 节点类型模型
 type NodeType struct {
-	gorm.Model
+	BasicModel
 	Code        string `gorm:"size:50;unique;not null" json:"code"`
 	Name        string `gorm:"size:100;not null" json:"name"`
 	Description string `gorm:"size:500" json:"description"`
+	Category    string `gorm:"size:50" json:"category"`
 }
 
 // TableName 指定表名
@@ -39,11 +40,13 @@ func MigrateNodeType(db *gorm.DB) error {
 				Code:        NodeTypeAPI,
 				Name:        "API节点",
 				Description: "发送HTTP请求并处理响应的节点",
+				Category:    "Task",
 			},
 			{
 				Code:        NodeTypeText,
 				Name:        "文本节点",
 				Description: "直接返回配置的文本内容的节点",
+				Category:    "Task",
 			},
 		}
 

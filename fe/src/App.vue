@@ -1,14 +1,14 @@
-<script setup lang="ts">
-import Workflow from './components/Workflow.vue'
-</script>
-
 <template>
   <div class="app-container">
     <header class="app-header">
-      <h1>工作流编辑器</h1>
+      <h1>Geminate</h1>
+      <nav class="nav-links">
+        <router-link to="/workflows">工作流列表</router-link>
+        <router-link to="/workflow/create">创建工作流</router-link>
+      </nav>
     </header>
     <main class="app-main">
-      <Workflow />
+      <router-view />
     </main>
   </div>
 </template>
@@ -35,6 +35,7 @@ body {
   height: 42px; /* 减少高度 */
   display: flex;
   align-items: center;
+  justify-content: space-between;
 }
 
 .app-header h1 {
@@ -42,6 +43,26 @@ body {
   color: #333;
   margin: 0;
   font-weight: 500; /* 调整字重 */
+}
+
+.nav-links {
+  display: flex;
+  gap: 16px;
+}
+
+.nav-links a {
+  color: #1890ff;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.nav-links a:hover {
+  color: #40a9ff;
+}
+
+.nav-links a.router-link-active {
+  color: #096dd9;
+  font-weight: 500;
 }
 
 .app-main {

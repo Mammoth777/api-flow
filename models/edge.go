@@ -3,7 +3,7 @@ package models
 import "github.com/jinzhu/gorm"
 
 type Edge struct {
-	gorm.Model
+	BasicModel
 	SourceNodeKey string     `json:"sourceNodeKey"`
 	TargetNodeKey string     `json:"targetNodeKey"`
 	Config        ItemConfig `gorm:"type:json" json:"config"`

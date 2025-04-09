@@ -9,9 +9,7 @@ export interface NodeType {
   code: string;
   name: string;
   description: string;
-  // 客户端额外属性，根据需要添加
-  color?: string;
-  category?: string;
+  category: string;
 }
 
 // 节点类型服务

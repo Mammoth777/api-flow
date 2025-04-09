@@ -26,10 +26,10 @@ func SetupRouter() *gin.Engine {
 		// 工作流路由
 		workflows := api.Group("/workflows")
 		{	
-			workflows.POST("/save", workflowHandler.CreateWithNodes)
+			workflows.POST("/save", workflowHandler.Save)
 			workflows.GET("", workflowHandler.List)
 			workflows.GET("/:id", workflowHandler.Get)
-			workflows.PUT("/:id", workflowHandler.Update)
+			// workflows.PUT("/:id", workflowHandler.Update)
 			workflows.DELETE("/:id", workflowHandler.Delete)
 			workflows.POST("/execute", workflowHandler.ExecuteWorkflow) // 执行工作流
 		}
