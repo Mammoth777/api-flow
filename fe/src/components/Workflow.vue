@@ -172,7 +172,7 @@ const handleSave = async () => {
     const workflowData = {
       name: workflowName.value,
       description: workflowDesc.value,
-      status: "ready",
+      status: 0,
       nodes: nodes,
       edges: edges
     };

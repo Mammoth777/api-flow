@@ -458,3 +458,17 @@ func (s *WorkflowService) getStartNodeKeyList(nodes []models.Node, edges []model
 
 	return startNodeKeyList, nil
 }
+
+// PublishWorkflow 发布工作流
+func (s *WorkflowService) PublishWorkflow(id uint) error {
+	var workflow models.Workflow
+	if err := s.DB.Where("id = ?", id).First(&workflow).Error; err != nil {
+		if gorm.IsRecordNotFoundError(err) {
+			return errors.New("工作流不存在")
+		}
+		return err
+	}
+	workflow.Status = models.WorkflowPublished
+	s.DB.Save(&workflow)
+	return nil
+}

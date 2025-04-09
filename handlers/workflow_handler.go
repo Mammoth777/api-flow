@@ -147,3 +147,19 @@ func (h *WorkflowHandler) ExecuteWorkflow(c *gin.Context) {
 
 	c.JSON(http.StatusOK, result)
 }
+
+func (h *WorkflowHandler) PublishWorkflow(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的ID参数"})
+		return
+	}
+	if err := h.workflowService.PublishWorkflow(uint(id)); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"message": "工作流发布成功",
+	})
+}

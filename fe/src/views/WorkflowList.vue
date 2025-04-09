@@ -33,12 +33,15 @@
             <td>{{ workflow.name }}</td>
             <td class="description-cell">{{ workflow.description }}</td>
             <td>
-              <span class="status-badge" :class="workflow.status">{{ getStatusText(workflow.status) }}</span>
+              <span class="status-badge" :class="workflow.statusText">{{ workflow.statusText }}</span>
             </td>
             <td>{{ formatDate(workflow.updatedAt) }}</td>
             <td>
               <button class="edit-btn" @click="editWorkflow(workflow.id)">编辑</button>
               <button class="delete-btn" @click="confirmDelete(workflow.id)">删除</button>
+              <!-- 根据状态显示不同按钮 -->
+              <button v-if="workflow.status === 1" class="view-btn" @click="viewInvocation(workflow.id)">查看调用</button>
+              <button v-else class="publish-btn" @click="publishIt(workflow.id)">发布</button>
             </td>
           </tr>
         </tbody>
@@ -81,7 +84,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { workflowService } from '../services/workflow.service';
-import { showConfirm, showSuccess, showError, closeLoading } from '../utils/alert';
+import { showConfirm, showSuccess, showError, closeLoading, showDialog } from '../utils/alert';
 
 const router = useRouter();
 const workflows = ref<any[]>([]);
@@ -107,6 +110,9 @@ const fetchWorkflows = async () => {
     };
     
     const result = await workflowService.getWorkflows(params);
+    result.data.forEach((workflow: any) => {
+      workflow.statusText = getStatusText(workflow.status);
+    })
     workflows.value = result.data || [];
     total.value = result.total || 0;
     
@@ -148,11 +154,8 @@ const formatDate = (dateString: string) => {
 // 获取状态文本
 const getStatusText = (status: string) => {
   const statusMap: Record<string, string> = {
-    'ready': '就绪',
-    'running': '运行中',
-    'paused': '已暂停',
-    'error': '错误',
-    'completed': '已完成'
+    0: 'ready',
+    1: 'published'
   };
   
   return statusMap[status] || '未知';
@@ -186,6 +189,77 @@ const confirmDelete = async (id: number) => {
       closeLoading();
       showError('删除失败：' + (err.message || '未知错误'));
     }
+  }
+};
+
+const publishIt = async (id: number) => {
+  const result = await showConfirm('确认发布', '确定要发布该工作流吗？', '发布');
+  
+  if (result.isConfirmed) {
+    try {
+      await workflowService.publishWorkflow(id.toString());
+      closeLoading();
+      
+      // 显示成功消息
+      await showSuccess('发布成功！');
+      
+      // 发布成功后，重新获取列表
+      fetchWorkflows();
+    } catch (err: any) {
+      closeLoading();
+      showError('发布失败：' + (err.message || '未知错误'));
+    }
+  }
+};
+
+// 查看工作流调用方式
+const viewInvocation = async (id: number) => {
+  // 构建curl命令并添加语法高亮
+  const baseUrl = "http://target-domain:8080";
+  const endpoint = `/api/workflows/execute`;
+  
+  // 使用高亮标记构建命令
+  const curlCommand = `<span class="cmd-keyword">curl</span> <span class="cmd-param">-X</span> <span class="cmd-value">POST</span> <span class="cmd-string">"${baseUrl}${endpoint}"</span>
+  <span class="cmd-param">-H</span> <span class="cmd-string">"Content-Type: application/json"</span> 
+  <span class="cmd-param">-d</span> <span class="cmd-string">'{
+      "workflowId": ${id},
+      "sync": true,
+      "inputs": {
+          "content": "hello world"
+      }
+    }'</span>`;
+  
+  // 构建纯文本版本用于复制
+  const plainTextCommand = `curl -X POST "${baseUrl}${endpoint}"
+  -H 'Content-Type: application/json'
+  -d '{
+      'workflowId': ${id},
+      'sync': true,
+      'inputs': {
+          'content': 'hello world'
+      }
+    }'`;
+  
+  // 显示curl调用方式
+  showDialog(
+    '调用方式', 
+    `<div class="curl-command">
+      <pre>${curlCommand}</pre>
+      <button id="curl-command-copy-btn">复制</button>
+    </div>`, 
+    '关闭',
+  );
+
+  const copy = () => {
+    console.log('复制成功');
+    navigator.clipboard.writeText(plainTextCommand)
+  }
+
+  const dom = document.getElementById('curl-command-copy-btn');
+  if (dom) {
+    dom.addEventListener('click', copy);
+  } else {
+    console.error('没有找到copy按钮');
   }
 };
 
@@ -270,7 +344,7 @@ onMounted(() => {
   color: #1890ff;
 }
 
-.status-badge.running {
+.status-badge.published {
   background-color: #e6fffb;
   color: #13c2c2;
 }
@@ -280,7 +354,7 @@ onMounted(() => {
   color: #f5222d;
 }
 
-.edit-btn, .delete-btn {
+.edit-btn, .delete-btn, .publish-btn, .view-btn {
   margin-right: 8px;
   padding: 4px 10px;
   border: none;
@@ -297,6 +371,16 @@ onMounted(() => {
 .delete-btn {
   background-color: #fff1f0;
   color: #f5222d;
+}
+
+.publish-btn {
+  background-color: #f6ffed;
+  color: #52c41a;
+}
+
+.view-btn {
+  background-color: #f9f0ff;
+  color: #722ed1;
 }
 
 .pagination {

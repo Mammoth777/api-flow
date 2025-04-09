@@ -56,5 +56,10 @@ export const workflowService = {
   deleteWorkflow: async (id: string) => {
     const response = await axios.delete(`/api/workflows/${id}`);
     return response.data;
+  },
+
+  publishWorkflow: async (id: string) => {
+    const response = await axios.post(`/api/workflows/${id}/publish`);
+    return response.data;
   }
 };

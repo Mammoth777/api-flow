@@ -60,6 +60,18 @@ export const showConfirm = (title: string, text: string, confirmButtonText = '�
   });
 };
 
+// 
+export const showDialog = (title: string, html: string, confirmButtonText = '确定') => {
+  return Swal.fire({
+    title,
+    html,
+    // showCancelButton: true,
+    confirmButtonColor: '#1890ff',
+    cancelButtonColor: '#d9d9d9',
+    confirmButtonText,
+  });
+};
+
 // 加载中
 export const showLoading = (title = '处理中...') => {
   return Swal.fire({
