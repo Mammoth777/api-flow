@@ -84,7 +84,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { workflowService } from '../services/workflow.service';
-import { showConfirm, showSuccess, showError, closeLoading, showDialog } from '../utils/alert';
+import { showConfirm, showSuccess, showError, closeLoading } from '../utils/alert';
 
 const router = useRouter();
 const workflows = ref<any[]>([]);
@@ -212,55 +212,9 @@ const publishIt = async (id: number) => {
   }
 };
 
-// 查看工作流调用方式
-const viewInvocation = async (id: number) => {
-  // 构建curl命令并添加语法高亮
-  const baseUrl = "http://target-domain:8080";
-  const endpoint = `/api/workflows/execute`;
-  
-  // 使用高亮标记构建命令
-  const curlCommand = `<span class="cmd-keyword">curl</span> <span class="cmd-param">-X</span> <span class="cmd-value">POST</span> <span class="cmd-string">"${baseUrl}${endpoint}"</span>
-  <span class="cmd-param">-H</span> <span class="cmd-string">"Content-Type: application/json"</span> 
-  <span class="cmd-param">-d</span> <span class="cmd-string">'{
-      "workflowId": ${id},
-      "sync": true,
-      "inputs": {
-          "content": "hello world"
-      }
-    }'</span>`;
-  
-  // 构建纯文本版本用于复制
-  const plainTextCommand = `curl -X POST "${baseUrl}${endpoint}"
-  -H 'Content-Type: application/json'
-  -d '{
-      'workflowId': ${id},
-      'sync': true,
-      'inputs': {
-          'content': 'hello world'
-      }
-    }'`;
-  
-  // 显示curl调用方式
-  showDialog(
-    '调用方式', 
-    `<div class="curl-command">
-      <pre>${curlCommand}</pre>
-      <button id="curl-command-copy-btn">复制</button>
-    </div>`, 
-    '关闭',
-  );
-
-  const copy = () => {
-    console.log('复制成功');
-    navigator.clipboard.writeText(plainTextCommand)
-  }
-
-  const dom = document.getElementById('curl-command-copy-btn');
-  if (dom) {
-    dom.addEventListener('click', copy);
-  } else {
-    console.error('没有找到copy按钮');
-  }
+// 查看工作流调用统计
+const viewInvocation = (id: number) => {
+  router.push(`/workflow/statistics/${id}`);
 };
 
 // 组件挂载时获取工作流列表

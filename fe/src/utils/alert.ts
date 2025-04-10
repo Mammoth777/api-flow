@@ -87,3 +87,22 @@ export const showLoading = (title = '处理中...') => {
 export const closeLoading = () => {
   Swal.close();
 };
+
+// 带导航功能的对话框
+export const showNavigateDialog = (title: string, text: string, url: string, buttonText = '前往查看') => {
+  return Swal.fire({
+    title,
+    text,
+    icon: 'info',
+    showCancelButton: true,
+    confirmButtonColor: '#1890ff',
+    cancelButtonColor: '#d9d9d9',
+    confirmButtonText: buttonText,
+    cancelButtonText: '取消'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      window.location.href = url;
+    }
+    return result;
+  });
+};

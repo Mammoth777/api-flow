@@ -22,6 +22,11 @@ const routes = [
     name: 'editWorkflow',
     component: Workflow,
     props: true
+  },
+  {
+    path: '/workflow/statistics/:id',
+    name: 'WorkflowStatistics',
+    component: () => import('../views/WorkflowStatistics.vue')
   }
 ];
 
