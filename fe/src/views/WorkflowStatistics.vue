@@ -125,14 +125,26 @@ const isLoading = ref(true);
 const error = ref<string | null>(null);
 
 // 构建curl命令
-const baseUrl = window.location.origin;
-const curlCommand = computed(() => `curl -X POST "${baseUrl}/api/workflow/${workflowId.value}/invoke" -H "Content-Type: application/json" -d '{"data": {"your_input_key": "your_input_value"}}'`);
+const baseUrl = 'http://example-server.com';
+const curlCommand = computed(() => `curl -X POST "${baseUrl}/api/workflow/execute" -H "Content-Type: application/json" -d '{
+    "workflowId": ${workflowId.value},
+    "sync": true,
+    "inputs": {
+        "content": "hello execute flow"
+    }
+}'`);
 
 // 带有高亮的格式化curl命令
 const formattedCurlCommand = computed(() => {
   return `<span class="cmd-keyword">curl</span> <span class="cmd-param">-X</span> <span class="cmd-value">POST</span> <span class="cmd-string">"${baseUrl}/api/workflow/${workflowId.value}/invoke"</span> \\
   <span class="cmd-param">-H</span> <span class="cmd-string">"Content-Type: application/json"</span> \\
-  <span class="cmd-param">-d</span> <span class="cmd-string">'{"data": {"your_input_key": "your_input_value"}}'</span>`;
+  <span class="cmd-param">-d</span> <span class="cmd-string">'{
+    "workflowId": ${workflowId.value},
+    "sync": true,
+    "inputs": {
+        "content": "hello execute flow"
+    }
+  }'</span>`;
 });
 
 // 统计数据
