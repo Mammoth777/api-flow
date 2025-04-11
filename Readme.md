@@ -1,6 +1,6 @@
-# api flow
+# Geminate
 
-`~/work/`
+> Geminate is a high-performance, user-friendly tool for flexible API and SQL orchestration, enabling efficient development and seamless data management.
 
 ## 功能列表
 
