@@ -58,8 +58,20 @@ export const workflowService = {
     return response.data;
   },
 
+  // 发布工作流
   publishWorkflow: async (id: string) => {
     const response = await axios.post(`/api/workflows/${id}/publish`);
     return response.data;
-  }
+  },
+
+  // 获取工作流执行历史记录
+  getWorkflowExecutionHistory: async (workflowId: string, params: any = {}): Promise<any> => {
+    try {
+      const response = await axios.get(`/api/workflows/execute/${workflowId}/history`, { params });
+      return response.data;
+    } catch (error) {
+      console.error('获取工作流执行历史失败:', error);
+      throw error;
+    }
+  },
 };

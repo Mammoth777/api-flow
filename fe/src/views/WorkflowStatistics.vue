@@ -26,10 +26,11 @@
 
     <div class="curl-section">
       <h2>API 调用方式</h2>
-      <div class="curl-command">
-        <pre v-html="formattedCurlCommand"></pre>
-        <button @click="copyCommand" class="copy-btn">复制</button>
-      </div>
+      <HighlightCode 
+        :code="curlCommand" 
+        language="bash" 
+        :lineNumbers="false"
+      />
     </div>
 
     <div v-if="isLoading" class="loading-state">
@@ -49,11 +50,11 @@
           <div class="stat-label">总调用次数</div>
         </div>
         <div class="stat-card">
-          <div class="stat-number">{{ statistics.successRate || '0%' }}</div>
+          <div class="stat-number">{{ (statistics.successRate * 100).toFixed(0) || '0' }}%</div>
           <div class="stat-label">成功率</div>
         </div>
         <div class="stat-card">
-          <div class="stat-number">{{ statistics.avgDuration || '0ms' }}</div>
+          <div class="stat-number">{{ statistics.avgDuration || '0' }}ms</div>
           <div class="stat-label">平均响应时间</div>
         </div>
         <div class="stat-card">
@@ -62,17 +63,9 @@
         </div>
       </div>
 
-      <div class="time-distribution">
-        <h2>调用时间分布</h2>
-        <div class="chart-container">
-          <!-- 这里可以放置图表组件，如 ECharts -->
-          <div class="placeholder-chart">时间分布图表将在这里显示</div>
-        </div>
-      </div>
-
-      <div class="recent-calls">
-        <h2>最近调用记录</h2>
-        <table class="calls-table">
+      <div class="execution-history">
+        <h2>调用历史记录</h2>
+        <table class="history-table">
           <thead>
             <tr>
               <th>调用时间</th>
@@ -83,28 +76,58 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-if="statistics.recentCalls && statistics.recentCalls.length === 0">
+            <tr v-if="executions.length === 0">
               <td colspan="5" class="no-data">暂无调用记录</td>
             </tr>
-            <tr v-for="(call, index) in statistics.recentCalls" :key="index">
-              <td>{{ formatDate(call.timestamp) }}</td>
+            <tr v-for="(execution, index) in executions" :key="index">
+              <td>{{ formatDate(execution.timestamp) }}</td>
               <td>
-                <span class="status-indicator" :class="call.status === 'success' ? 'success' : 'error'">
-                  {{ call.status === 'success' ? '成功' : '失败' }}
+                <span class="status-indicator" :class="execution.status === 2 ? 'success' : 'error'">
+                  <i class="status-icon"></i>
+                  {{ execution.status === 2 ? '成功' : '失败' }}
                 </span>
               </td>
-              <td>{{ call.duration }}ms</td>
+              <td>{{ execution.duration }}ms</td>
               <td class="code-cell">
-                <div class="code-preview">{{ formatJson(call.input) }}</div>
-                <button @click="showFullData(call.input)" class="view-btn">查看</button>
+                <div class="code-preview">{{ formatJson(execution.input) }}</div>
+                <button @click="showFullData(execution.input)" class="view-btn">查看</button>
               </td>
               <td class="code-cell">
-                <div class="code-preview">{{ formatJson(call.output) }}</div>
-                <button @click="showFullData(call.output)" class="view-btn">查看</button>
+                <div class="code-preview">{{ formatJson(execution.output) }}</div>
+                <button @click="showFullData(execution.output)" class="view-btn">查看</button>
               </td>
             </tr>
           </tbody>
         </table>
+        
+        <div class="pagination">
+          <span>共 {{ total }} 条记录</span>
+          <div class="pagination-controls">
+            <button 
+              class="page-btn" 
+              :disabled="currentPage <= 1" 
+              @click="changePage(currentPage - 1)"
+            >
+              上一页
+            </button>
+            
+            <span class="page-info">{{ currentPage }} / {{ totalPages }}</span>
+            
+            <button 
+              class="page-btn" 
+              :disabled="currentPage >= totalPages" 
+              @click="changePage(currentPage + 1)"
+            >
+              下一页
+            </button>
+            
+            <select v-model="pageSize" class="page-size-select" @change="handlePageSizeChange">
+              <option :value="10">10条/页</option>
+              <option :value="20">20条/页</option>
+              <option :value="50">50条/页</option>
+            </select>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -114,7 +137,9 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { workflowService } from '../services/workflow.service';
-import { showSuccess, showError, showDialog } from '../utils/alert';
+import { showSuccess, showError, showComponentDialog } from '../utils/alert';
+import HighlightCode from '../components/HighlightCode.vue';
+import { serverUrl } from '../env';
 
 const route = useRoute();
 const router = useRouter();
@@ -125,40 +150,35 @@ const isLoading = ref(true);
 const error = ref<string | null>(null);
 
 // 构建curl命令
-const baseUrl = 'http://example-server.com';
-const curlCommand = computed(() => `curl -X POST "${baseUrl}/api/workflow/execute" -H "Content-Type: application/json" -d '{
+const baseUrl = serverUrl;
+const curlCommand = computed(() => `curl -X POST "${baseUrl}/api/workflows/${workflowId.value}/invoke" \\
+  -H "Content-Type: application/json" \\
+  -d '{
     "workflowId": ${workflowId.value},
     "sync": true,
     "inputs": {
         "content": "hello execute flow"
     }
-}'`);
-
-// 带有高亮的格式化curl命令
-const formattedCurlCommand = computed(() => {
-  return `<span class="cmd-keyword">curl</span> <span class="cmd-param">-X</span> <span class="cmd-value">POST</span> <span class="cmd-string">"${baseUrl}/api/workflow/${workflowId.value}/invoke"</span> \\
-  <span class="cmd-param">-H</span> <span class="cmd-string">"Content-Type: application/json"</span> \\
-  <span class="cmd-param">-d</span> <span class="cmd-string">'{
-    "workflowId": ${workflowId.value},
-    "sync": true,
-    "inputs": {
-        "content": "hello execute flow"
-    }
-  }'</span>`;
-});
+  }'`);
 
 // 统计数据
 const statistics = ref<any>({
   totalCalls: 0,
-  successRate: '0%',
-  avgDuration: '0ms',
-  todayCalls: 0,
-  recentCalls: []
+  successRate: '--',
+  avgDuration: '--',
+  todayCalls: 0
 });
+
+// 执行历史相关状态
+const executions = ref<any[]>([]);
+const total = ref(0);
+const currentPage = ref(1);
+const pageSize = ref(10);
+const totalPages = computed(() => Math.ceil(total.value / pageSize.value) || 1);
 
 // 返回上一页
 const goBack = () => {
-  router.push('/workflow/list');
+  router.push('/workflows');
 };
 
 // 复制命令
@@ -179,47 +199,55 @@ const fetchStatistics = async () => {
     workflowName.value = workflowDetail.name;
     workflowStatus.value = workflowDetail.status === 1 ? 'published' : 'ready';
     
-    // 这里应该调用获取统计数据的API，目前使用模拟数据
-    // const statsData = await workflowService.getWorkflowStatistics(workflowId.value);
+    // 获取工作流执行历史，带分页参数
+    const params = {
+      page: currentPage.value,
+      pageSize: pageSize.value
+    };
     
-    // 模拟数据
+    const historyData = await workflowService.getWorkflowExecutionHistory(workflowId.value, params);
+    
+    // 转换执行历史数据格式
+    executions.value = (historyData.data || []).map((item: any) => ({
+      timestamp: item.createdAt,
+      status: item.status,
+      duration: item.duration,
+      input: item.inputs || {},
+      output: item.results || {}
+    }));
+    
+    // 计算统计信息（可能需要单独的API调用）
+    const statsData = historyData.statistics || {};
+    // 设置总记录数
     statistics.value = {
-      totalCalls: 128,
-      successRate: '92%',
-      avgDuration: '245ms',
-      todayCalls: 15,
-      recentCalls: [
-        {
-          timestamp: new Date().toISOString(),
-          status: 'success',
-          duration: 230,
-          input: { data: { query: "如何使用API工作流?" } },
-          output: { result: "API工作流是一种自动化工具，可以帮助您...", status: "success" }
-        },
-        {
-          timestamp: new Date(Date.now() - 3600000).toISOString(),
-          status: 'error',
-          duration: 456,
-          input: { data: { query: "错误的查询" } },
-          output: { error: "处理请求时出错", status: "error" }
-        },
-        {
-          timestamp: new Date(Date.now() - 7200000).toISOString(),
-          status: 'success',
-          duration: 189,
-          input: { data: { query: "工作流示例" } },
-          output: { result: "以下是一些常见的工作流示例...", status: "success" }
-        }
-      ]
+      totalCalls: statsData.total,
+      successRate: statsData.total ? statsData.successCount / statsData.total : 0, // %
+      avgDuration: statsData.avgDuration, // ms
+      todayCalls: statsData.todayCount
     };
     
     console.log('工作流统计:', statistics.value);
+    console.log('执行历史:', executions.value);
   } catch (err: any) {
     console.error('获取工作流统计失败:', err);
     error.value = '获取统计数据失败，请重试';
+    executions.value = [];
   } finally {
     isLoading.value = false;
   }
+};
+
+// 切换页码
+const changePage = (newPage: number) => {
+  if (newPage < 1 || newPage > totalPages.value) return;
+  currentPage.value = newPage;
+  fetchStatistics();
+};
+
+// 修改每页数量
+const handlePageSizeChange = () => {
+  currentPage.value = 1; // 切换每页条数时，回到第一页
+  fetchStatistics();
 };
 
 // 格式化日期
@@ -248,12 +276,23 @@ const formatJson = (obj: any) => {
 };
 
 // 显示完整数据
-const showFullData = (data: any) => {
-  const formattedData = JSON.stringify(data, null, 2);
-  showDialog(
-    '数据详情', 
-    `<pre class="json-viewer">${formattedData}</pre>`, 
-    '关闭'
+const showFullData = (data: string) => {
+  const obj = JSON.parse(data)
+  const formattedData = JSON.stringify(obj, null, 2);
+  
+  // 使用新的支持组件渲染的对话框函数
+  showComponentDialog(
+    '数据详情',
+    HighlightCode,
+    {
+      code: formattedData,
+      language: 'json',
+      lineNumbers: true,
+      showHeader: true
+    },
+    {
+      width: '800px',
+    }
   );
 };
 
@@ -266,12 +305,62 @@ onMounted(() => {
 <style scoped>
 .workflow-stats-container {
   max-width: 1200px;
-  padding: 20px;
   margin: 0 auto;
+  padding: 0 20px 20px;
+  height: calc(100vh - 60px); /* 留出顶部导航栏的空间 */
 }
 
 .back-button {
-  margin-bottom: 20px;
+  padding: 20px 0 10px;
+  margin-bottom: 10px;
+}
+
+.stats-header {
+  margin-bottom: 24px;
+  overflow: visible;
+}
+
+.curl-section {
+  margin-bottom: 30px;
+  background-color: white;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  overflow: visible;
+}
+
+.stats-content {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  overflow: visible;
+  margin-bottom: 200px;
+}
+
+/* 确保表格内容在需要时可滚动 */
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.code-cell {
+  position: relative;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 响应式设计调整 */
+@media screen and (max-width: 768px) {
+  .workflow-stats-container {
+    padding: 0 10px 10px;
+  }
+  
+  .stats-summary {
+    grid-template-columns: repeat(2, 1fr); /* 在小屏幕上每行显示2个卡片 */
+  }
 }
 
 .back-button button {
@@ -293,10 +382,6 @@ onMounted(() => {
   border-bottom: 6px solid transparent;
   border-right: 6px solid #1890ff;
   margin-right: 8px;
-}
-
-.stats-header {
-  margin-bottom: 24px;
 }
 
 .stats-header h1 {
@@ -338,61 +423,10 @@ onMounted(() => {
   color: #1890ff;
 }
 
-.curl-section {
-  margin-bottom: 30px;
-  background-color: white;
-  border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  padding: 20px;
-}
-
 .curl-section h2 {
   font-size: 18px;
   margin-bottom: 16px;
   color: #333;
-}
-
-.curl-command {
-  background-color: #282c34;
-  border-radius: 6px;
-  padding: 16px;
-  position: relative;
-  overflow-x: hidden;
-}
-
-.curl-command pre {
-  white-space: pre-wrap;
-  word-break: break-word;
-  margin: 0;
-  padding-bottom: 40px;
-  font-family: 'Menlo', 'Monaco', 'Consolas', monospace;
-  font-size: 14px;
-  color: #d4d4d4;
-  line-height: 1.5;
-}
-
-.copy-btn {
-  position: absolute;
-  right: 16px;
-  bottom: 16px;
-  background-color: #1890ff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  padding: 6px 12px;
-  cursor: pointer;
-  font-size: 12px;
-  transition: background-color 0.3s;
-}
-
-.copy-btn:hover {
-  background-color: #40a9ff;
-}
-
-.stats-content {
-  display: flex;
-  flex-direction: column;
-  gap: 30px;
 }
 
 .stats-summary {
@@ -421,78 +455,78 @@ onMounted(() => {
   font-size: 14px;
 }
 
-.time-distribution, .recent-calls {
+.execution-history {
   background: white;
   border-radius: 4px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   padding: 20px;
 }
 
-.time-distribution h2, .recent-calls h2 {
+.execution-history h2 {
   font-size: 18px;
   margin-bottom: 16px;
   color: #333;
 }
 
-.chart-container {
-  height: 300px;
-}
-
-.placeholder-chart {
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #f5f5f5;
-  color: #999;
-  border-radius: 4px;
-}
-
-.calls-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.calls-table th, 
-.calls-table td {
+.history-table th, 
+.history-table td {
   padding: 12px;
   text-align: left;
   border-bottom: 1px solid #f0f0f0;
 }
 
-.calls-table th {
+.history-table th {
   background-color: #fafafa;
   font-weight: 500;
 }
 
-.status-indicator {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 12px;
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 0 0;
+  color: #666;
+  font-size: 14px;
 }
 
-.status-indicator.success {
-  background-color: #f6ffed;
-  color: #52c41a;
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.status-indicator.error {
-  background-color: #fff1f0;
-  color: #f5222d;
+.page-btn {
+  padding: 4px 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background-color: white;
+  cursor: pointer;
+  font-size: 14px;
+  color: #333;
 }
 
-.code-cell {
-  position: relative;
-  max-width: 200px;
+.page-btn:hover:not(:disabled) {
+  color: #1890ff;
+  border-color: #1890ff;
 }
 
-.code-preview {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-family: monospace;
-  padding-right: 40px;
+.page-btn:disabled {
+  cursor: not-allowed;
+  color: #d9d9d9;
+  background-color: #f5f5f5;
+}
+
+.page-info {
+  margin: 0 8px;
+}
+
+.page-size-select {
+  margin-left: 16px;
+  padding: 4px 8px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background-color: white;
+  cursor: pointer;
 }
 
 .view-btn {
@@ -572,5 +606,63 @@ onMounted(() => {
   max-height: 400px;
   overflow-y: auto;
   border-radius: 4px;
+}
+
+:deep(.json-detail-dialog) {
+  width: 90%;
+  max-width: 800px;
+  max-height: 80vh;
+  overflow: auto;
+}
+
+/* 修改根元素样式确保滚动正常工作 */
+:deep(html), :deep(body) {
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* 确保页面容器可以撑开并滚动 */
+:deep(#app) {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.status-indicator {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.status-indicator.success {
+  background-color: #f6ffed;
+  color: #52c41a;
+  border: 1px solid #b7eb8f;
+}
+
+.status-indicator.error {
+  background-color: #fff2f0;
+  color: #ff4d4f;
+  border: 1px solid #ffccc7;
+}
+
+.status-icon {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+
+.status-indicator.success .status-icon {
+  background-color: #52c41a;
+}
+
+.status-indicator.error .status-icon {
+  background-color: #ff4d4f;
 }
 </style>

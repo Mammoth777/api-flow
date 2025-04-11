@@ -70,5 +70,7 @@ body {
   padding: 0; /* 去掉内边距以最大化工作区域 */
   overflow: hidden;
   background-color: #f0f2f5;
+  overflow-y: auto;
+  padding-bottom: 200px;
 }
 </style>

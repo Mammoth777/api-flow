@@ -61,6 +61,9 @@ func (s *NodeExecutionService) ExecuteNodeById(nodeID uint, inputs map[string]in
 }
 
 func (s *NodeExecutionService) ExecuteNodeWithoutWorkflow(nodeID uint, inputs map[string]interface{}) (*engine.ExecuteResult, error) {
+	// TODO 验证工作流是否已发布
+	// ...
+	
 	// 获取节点信息
 	node, err := s.nodeService.GetNodeByID(nodeID)
 	if err != nil {

@@ -55,7 +55,7 @@ func (e *APINodeExecutor) ValidateConfig(config models.ItemConfig) error {
 
 func (e *APINodeExecutor) newFailExecuteResult(msg string) *ExecuteResult {
 	return &ExecuteResult{
-		Success: false,
+		Status: models.ExecuteStatusError,
 		Data: nil,
 		Error: msg,
 	}
@@ -131,11 +131,18 @@ func (e *APINodeExecutor) Execute(node *models.Node, inputs map[string]interface
 		responseData = string(respBody)
 	}
 
+	var status models.ExecuteStatus
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		status = models.ExecuteStatusSuccess
+	} else {
+		status = models.ExecuteStatusError
+	}
+
 	// 返回执行结果
 	return &ExecuteResult{
 		NodeID: node.ID,
 		NodeKey: node.NodeKey,
-		Success:    resp.StatusCode >= 200 && resp.StatusCode < 300,
+		Status:  status,
 		Data:  map[string]interface{}{
 			"apiResponse": responseData,
 		},

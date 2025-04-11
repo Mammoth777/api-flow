@@ -38,8 +38,13 @@ func main() {
 		log.Fatalf("节点表迁移失败: %v", err)
 	}
 
+	// 连线表
 	if err = models.MigrateEdge(database.DB); err != nil {
 		log.Fatalf("连线表迁移失败: %v", err)
+	}
+
+	if err = models.MigrateWorkflowInstance(database.DB); err != nil {
+		log.Fatalf("流程实例表迁移失败: %v", err)
 	}
 
 	// 设置路由

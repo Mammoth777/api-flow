@@ -30,7 +30,7 @@ func (e *TextNodeExecutor) newfailExecuteResult(node *models.Node, msg string) *
 	return &ExecuteResult{
 		NodeID: node.ID,
 		NodeKey: node.NodeKey,
-		Success: false,
+		Status: models.ExecuteStatusError,
 		Data:    nil,
 		Error:   msg,
 	}
@@ -65,7 +65,7 @@ func (e *TextNodeExecutor) Execute(node *models.Node, inputs map[string]interfac
 	return &ExecuteResult{
 		NodeID:  node.ID,
 		NodeKey: node.NodeKey,
-		Success: true,
+		Status: models.ExecuteStatusSuccess,
 		Data: map[string]interface{}{
 			"output":      "echo: " + contentStr,
 			"content_type": contentType,

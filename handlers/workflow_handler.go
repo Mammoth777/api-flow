@@ -163,3 +163,26 @@ func (h *WorkflowHandler) PublishWorkflow(c *gin.Context) {
 		"message": "工作流发布成功",
 	})
 }
+
+func (h *WorkflowHandler) GetWorkflowInstances(c *gin.Context) {
+	idStr := c.Param("workflowId")
+	id, err := strconv.ParseUint(idStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的ID参数"})
+		return
+	}
+	pageStr := c.DefaultQuery("page", "1")
+	sizeStr := c.DefaultQuery("size", "10")
+
+	page, _ := strconv.Atoi(pageStr)
+	size, _ := strconv.Atoi(sizeStr)
+	instanceList, statistics, err := h.workflowService.GetWorkflowInstances(uint(id), page, size)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"statistics": statistics,
+		"data":  instanceList,
+	})
+}

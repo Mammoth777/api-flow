@@ -31,8 +31,9 @@ func SetupRouter() *gin.Engine {
 			workflows.GET("/:id", workflowHandler.Get)
 			// workflows.PUT("/:id", workflowHandler.Update)
 			workflows.DELETE("/:id", workflowHandler.Delete)
-			workflows.POST("/execute", workflowHandler.ExecuteWorkflow) // 执行工作流
 			workflows.POST("/:id/publish", workflowHandler.PublishWorkflow) // 发布工作流
+			workflows.POST("/execute", workflowHandler.ExecuteWorkflow) // 执行工作流
+			workflows.GET("/execute/:workflowId/history", workflowHandler.GetWorkflowInstances) // 获取工作流执行历史
 		}
 
 		// 节点路由

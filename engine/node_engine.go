@@ -11,7 +11,7 @@ import (
 type ExecuteResult struct {
 	NodeID  uint                   `json:"nodeId"`
 	NodeKey string                 `json:"nodeKey"`
-	Success bool                   `json:"success"`
+	Status  models.ExecuteStatus   `json:"status"`
 	Data    map[string]interface{} `json:"data,omitempty"`
 	Error   string                 `json:"error,omitempty"`
 }

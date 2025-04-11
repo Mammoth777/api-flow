@@ -2,7 +2,7 @@
   <div class="workflow-list-container">
     <div class="workflow-list-header">
       <h1>工作流列表</h1>
-      <button class="create-btn" @click="createWorkflow">新建工作流</button>
+      <button class="create-btn" @click="createWorkflow">新建</button>
     </div>
     
     <div v-if="isLoading" class="loading-state">

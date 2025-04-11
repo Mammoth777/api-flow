@@ -1,6 +1,7 @@
 package services
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -13,10 +14,17 @@ import (
 	"api-flow/models"
 )
 
+type Statistics struct {
+	Total        uint    `gorm:"column:total"`
+	SuccessCount uint    `gorm:"column:successCount"`
+	TodayCount   uint    `gorm:"column:todayCount"`
+	AvgDuration  float64 `gorm:"column:avgDuration"`
+}
+
 // WorkflowService 流程服务
 type WorkflowService struct {
 	DB                   *gorm.DB
-	NodeExecutionService *NodeExecutionService
+NodeExecutionService *NodeExecutionService
 }
 
 // NewWorkflowService 创建流程服务实例
@@ -95,12 +103,12 @@ func (s *WorkflowService) UpdateWorkflow(id uint, workflow *dto.WorkflowDTO) err
 	// 更新节点
 	for _, node := range workflow.Nodes {
 		updateNodes := tx.Model(&node).Where("id = ?", node.ID).Update(map[string]interface{}{
-			"nodeKey": node.NodeKey,
-			"nodeType": node.NodeType,
-			"name": node.Name,
+			"nodeKey":     node.NodeKey,
+			"nodeType":    node.NodeType,
+			"name":        node.Name,
 			"description": node.Description,
-			"config": node.Config,
-			"status": node.Status,
+			"config":      node.Config,
+			"status":      node.Status,
 		})
 		if updateNodes.Error != nil {
 			tx.Rollback()
@@ -126,7 +134,7 @@ func (s *WorkflowService) UpdateWorkflow(id uint, workflow *dto.WorkflowDTO) err
 		return err
 	}
 	return nil
-	
+
 }
 
 // DeleteWorkflow 删除流程 (软删除)
@@ -306,6 +314,7 @@ func (s *WorkflowService) GetWorkflowWithNodes(workflowID uint) (*dto.WorkflowDT
 		CreatedAt:   workflow.CreatedAt.Format("2006-01-02 15:04:05"),
 		UpdatedAt:   workflow.UpdatedAt.Format("2006-01-02 15:04:05"),
 		Nodes:       nodes,
+		Status:      workflow.Status,
 	}
 
 	return response, nil
@@ -339,31 +348,62 @@ func (s *WorkflowService) ExecuteWorkflow(request *dto.WorkflowExecutionRequest)
 		nodeMap[nodes[i].NodeKey] = &nodes[i]
 	}
 
-	var success bool = true
+	var status models.ExecuteStatus = models.ExecuteStatusReady
 	var errorMessage string
 
 	// 执行节点
 	nodeResults, err := s.executeNodes(nodes, edges, request.Inputs)
 	if err != nil {
-		success = false
+		status = models.ExecuteStatusError
 		errorMessage = fmt.Sprintf("执行节点失败: %v", err)
 	} else {
 		for _, result := range nodeResults {
-			if !result.Success {
-				success = false
+			status = result.Status
+			if status != models.ExecuteStatusSuccess {
 				errorMessage += fmt.Sprintf("节点 %s 执行失败: %s\n", result.NodeKey, result.Error)
 			}
 		}
 	}
 
+	Duration := time.Since(startTime).Milliseconds()
+
 	// 构建工作流执行结果
 	executionResult := &dto.WorkflowExecutionResult{
-		WorkflowID:    workflow.ID,
-		WorkflowName:  workflow.Name,
-		Success:       success,
-		NodeResults:   nodeResults,
-		ErrorMessage:  errorMessage,
-		ExecutionTime: time.Since(startTime).String(),
+		WorkflowID:   workflow.ID,
+		WorkflowName: workflow.Name,
+		Status:       status,
+		NodeResults:  nodeResults,
+		ErrorMessage: errorMessage,
+		Duration:     Duration,
+	}
+
+	// 转换Inputs为JSON字符串
+	inputsJSON, err := json.Marshal(request.Inputs)
+	if err != nil {
+		return nil, fmt.Errorf("序列化输入参数失败: %v", err)
+	}
+
+	// 转换Results为JSON字符串
+	resultsJSON, err := json.Marshal(nodeResults)
+	if err != nil {
+		return nil, fmt.Errorf("序列化执行结果失败: %v", err)
+	}
+
+	// 创建并保存流程实例记录
+	instance := &models.WorkflowInstance{
+		WorkflowID:   workflow.ID,
+		WorkflowName: workflow.Name,
+		Status:       status,
+		StartTime:    startTime,
+		EndTime:      time.Now(),
+		Inputs:       string(inputsJSON),
+		Results:      string(resultsJSON),
+		ErrorMessage: errorMessage,
+		Duration:     Duration,
+	}
+
+	if err := s.DB.Create(instance).Error; err != nil {
+		return nil, fmt.Errorf("保存流程实例失败: %v", err)
 	}
 
 	return executionResult, nil
@@ -410,7 +450,7 @@ nodeloop:
 			results = append(results, engine.ExecuteResult{
 				NodeID:  node.ID,
 				NodeKey: node.NodeKey,
-				Success: result.Success,
+				Status: result.Status,
 				Data:    result.Data,
 				Error:   result.Error,
 			})
@@ -471,4 +511,98 @@ func (s *WorkflowService) PublishWorkflow(id uint) error {
 	workflow.Status = models.WorkflowPublished
 	s.DB.Save(&workflow)
 	return nil
+}
+
+// GetWorkflowInstances 获取指定工作流的所有实例
+func (s *WorkflowService) GetWorkflowInstances(workflowID uint, page, size int) ([]models.WorkflowInstance, map[string]uint, error) {
+	var instances []models.WorkflowInstance
+
+	var stats Statistics
+
+	// 获取统计信息
+	db := s.DB.Model(&models.WorkflowInstance{}).Where("workflow_id = ?", workflowID)
+
+	// 获取总记录数、成功实例数、今天的实例数和平均用时
+	todayStart := time.Now().Truncate(24 * time.Hour)
+	todayEnd := todayStart.Add(24 * time.Hour)
+
+	err := db.Select(`
+		COUNT(*) AS total,
+		SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) AS successCount,
+		SUM(CASE WHEN created_at >= ? AND created_at < ? THEN 1 ELSE 0 END) AS todayCount,
+		AVG(duration) AS avgDuration
+	`, models.ExecuteStatusSuccess, todayStart, todayEnd).
+		Scan(&stats).Error
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// 将统计信息转换为map
+	statistics := map[string]uint{
+		"total":        stats.Total,
+		"successCount": stats.SuccessCount,
+		"todayCount":   stats.TodayCount,
+		"avgDuration":  uint(stats.AvgDuration),
+	}
+	if err := s.DB.Where("workflow_id = ?", workflowID).
+		Order("created_at DESC").
+		Offset((page - 1) * size).Limit(size).
+		Find(&instances).Error; err != nil {
+		return nil, nil, err
+	}
+
+	for index, instance := range instances {
+		res := dto.WorkflowExecutionResult{}
+		res.WorkflowID = instance.WorkflowID
+		res.WorkflowName = instance.WorkflowName
+		res.Status = instance.Status
+		res.Duration = instance.Duration
+		res.ErrorMessage = instance.ErrorMessage
+		json.Unmarshal([]byte(instance.Results), &res.NodeResults)
+		resultBytes, err := json.Marshal(res)
+		if err != nil {
+			return nil, nil, err
+		}
+		instance.Results = string(resultBytes)
+		instances[index] = instance
+	}
+
+	return instances, statistics, nil
+}
+
+// GetWorkflowInstanceByID 通过ID获取流程实例
+func (s *WorkflowService) GetWorkflowInstanceByID(id uint) (*models.WorkflowInstance, error) {
+	var instance models.WorkflowInstance
+	if err := s.DB.First(&instance, id).Error; err != nil {
+		if gorm.IsRecordNotFoundError(err) {
+			return nil, errors.New("流程实例不存在")
+		}
+		return nil, err
+	}
+	return &instance, nil
+}
+
+// GetAllWorkflowInstances 获取所有流程实例（可根据工作流ID筛选）
+func (s *WorkflowService) GetAllWorkflowInstances(workflowID *uint, page, size int) ([]models.WorkflowInstance, int, error) {
+	var instances []models.WorkflowInstance
+	var count int
+
+	query := s.DB.Model(&models.WorkflowInstance{})
+
+	// 如果提供了workflowID，则筛选特定工作流的实例
+	if workflowID != nil {
+		query = query.Where("workflow_id = ?", *workflowID)
+	}
+
+	// 获取总记录数
+	query.Count(&count)
+
+	// 分页查询
+	if err := query.Order("created_at DESC").
+		Offset((page - 1) * size).Limit(size).
+		Find(&instances).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return instances, count, nil
 }
