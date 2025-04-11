@@ -1,18 +1,39 @@
 package engine
 
 import (
+	"api-flow/engine/core"
 	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"text/template"
 	"time"
-
-	"api-flow/models"
 )
+
+var apiNodeOutputFormat = core.ParamFormat{
+	core.NewParamDefination("response", core.DataTypeObject, "API响应数据"),
+}
+var apiNodeInputFormat = core.ParamFormat{
+	core.NewParamString("url", "API 请求URL", ""),
+	core.NewParamOptions("method", "API 请求方法", []interface{}{"GET", "POST", "PUT", "DELETE", "PATCH"}),
+	core.NewParamObject("headers", "请求头", map[string]interface{}{}),
+	core.NewParamString("body", "请求体", ""),
+	core.NewParamObject("params", "请求参数", map[string]interface{}{}),
+	core.NewParamNumber("timeout", "请求超时时间（秒）", 30),
+	core.NewParamNumber("retry", "重试次数", 0),
+	core.NewParamNumber("retryInterval", "重试间隔时间（秒）", 5),
+}
+var ApiNodeType = &NodeType{
+	Code:        "api",
+	Name:        "API节点",
+	Description: "发送HTTP请求并处理响应的节点",
+	Category:    "Task",
+	Input: apiNodeInputFormat,
+	Output: apiNodeOutputFormat,
+}
 
 // APINodeExecutor API节点执行器
 type APINodeExecutor struct {
@@ -28,8 +49,12 @@ func NewAPINodeExecutor() *APINodeExecutor {
 	}
 }
 
+func (e *APINodeExecutor) GetOutputFormat() core.ParamFormat {
+	return apiNodeOutputFormat
+}
+
 // ValidateConfig 验证API节点配置
-func (e *APINodeExecutor) ValidateConfig(config models.ItemConfig) error {
+func (e *APINodeExecutor) ValidateConfig(config ItemConfig) error {
 	if config == nil {
 		return errors.New("配置不能为空")
 	}
@@ -53,16 +78,16 @@ func (e *APINodeExecutor) ValidateConfig(config models.ItemConfig) error {
 	return nil
 }
 
-func (e *APINodeExecutor) newFailExecuteResult(msg string) *ExecuteResult {
-	return &ExecuteResult{
-		Status: models.ExecuteStatusError,
+func (e *APINodeExecutor) newFailExecuteResult(msg string) *core.ExecuteResult {
+	return &core.ExecuteResult{
+		Status: core.ExecuteStatusError,
 		Data: nil,
 		Error: msg,
 	}
 }
 
 // Execute 执行API请求
-func (e *APINodeExecutor) Execute(node *models.Node, inputs map[string]interface{}) *ExecuteResult {
+func (e *APINodeExecutor) Execute(node *Node, inputs map[string]interface{}) *core.ExecuteResult {
 	config := node.Config
 
 	// 获取URL和方法
@@ -119,7 +144,7 @@ func (e *APINodeExecutor) Execute(node *models.Node, inputs map[string]interface
 	defer resp.Body.Close()
 
 	// 读取响应
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return e.newFailExecuteResult(fmt.Sprintf("读取响应失败: %v", err))
 	}
@@ -131,20 +156,20 @@ func (e *APINodeExecutor) Execute(node *models.Node, inputs map[string]interface
 		responseData = string(respBody)
 	}
 
-	var status models.ExecuteStatus
+	var status core.ExecuteStatus
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		status = models.ExecuteStatusSuccess
+		status = core.ExecuteStatusSuccess
 	} else {
-		status = models.ExecuteStatusError
+		status = core.ExecuteStatusError
 	}
 
 	// 返回执行结果
-	return &ExecuteResult{
+	return &core.ExecuteResult{
 		NodeID: node.ID,
 		NodeKey: node.NodeKey,
 		Status:  status,
 		Data:  map[string]interface{}{
-			"apiResponse": responseData,
+			"response": responseData,
 		},
 	}
 }

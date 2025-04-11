@@ -5,17 +5,11 @@
     <div class="workflow-editor">
       <!-- 使用新的节点类型面板组件 -->
       <NodeTypePanel :graph="graph" @node-types-loaded="handleNodeTypesLoaded" />
-      
+
       <div class="workflow-main">
         <div ref="graphContainer" class="workflow-canvas"></div>
-        <NodeInspector 
-          v-show="selectedNode" 
-          :selectedNode="selectedNode" 
-          :nodeTypes="nodeTypes"
-          @close="clearSelectedNode" 
-          @nodeUpdated="handleNodeUpdated" 
-          @deleteNode="handleDeleteNode" 
-        />
+        <NodeInspector v-show="selectedNode" :selectedNode="selectedNode" :nodeTypes="nodeTypes"
+          @close="clearSelectedNode" @nodeUpdated="handleNodeUpdated" @deleteNode="handleDeleteNode" />
       </div>
     </div>
   </div>
@@ -31,7 +25,7 @@ import NodeTypePanel from './NodeTypePanel.vue'
 import { workflowService } from '../services/workflow.service'
 import type { NodeType } from '../services/node-type.service'
 import { useRoute } from 'vue-router'
-import { showConfirm, showSuccess, showError, closeLoading } from '../utils/alert'
+import { Toast } from '../utils/toast' // 导入新的Toast工具类
 
 // 获取路由参数
 const route = useRoute();
@@ -67,22 +61,18 @@ const clearSelectedNode = () => {
 // 删除节点
 const handleDeleteNode = (node: Cell) => {
   if (!node) return;
-  
-  showConfirm('删除节点', '确定要删除此节点吗？', '删除').then((result) => {
-    if (result.isConfirmed) {
-      // 记录节点数据，以便可能需要的后续操作
-      const nodeData = node.getData();
-      console.log(`正在删除节点:`, nodeData);
-      
-      // 从图中移除节点
-      node.remove();
-      
-      // 清除选中状态
-      selectedNode.value = null;
-      
-      showSuccess('节点已删除');
-    }
-  });
+
+  // 记录节点数据，以便可能需要的后续操作
+  const nodeData = node.getData();
+  console.log(`正在删除节点:`, nodeData);
+
+  // 从图中移除节点
+  node.remove();
+
+  // 清除选中状态
+  selectedNode.value = null;
+
+  Toast.success('节点已删除');
 };
 
 // 设置键盘事件监听，用于删除节点
@@ -95,34 +85,34 @@ const setupKeyboardEvents = () => {
 // 处理节点更新
 const handleNodeUpdated = (updatedData: any) => {
   if (!selectedNode.value) return;
-  
+
   const node = selectedNode.value;
   const currentData = node.getData() || {};
-  
+
   // 创建更新数据副本，排除 nodeType
   const { nodeType: updatedNodeType, ...dataToUpdate } = updatedData;
-  
+
   // 如果尝试更新节点类型且与当前类型不同，发出警告
   if (updatedNodeType && updatedNodeType !== currentData.nodeType) {
     console.warn('节点类型不可更改');
     // 可选：提醒用户
     // alert('节点类型不可更改');
   }
-  
+
   // 更新节点数据，保持原始 nodeType
   const newData = {
     ...currentData,
     ...dataToUpdate
   };
-  
+
   // 将更新后的数据设置回节点
   node.setData(newData);
-  
+
   // 如果名称发生变化，同时更新节点上显示的文本
   if (dataToUpdate.name) {
     node.attr('label/text', dataToUpdate.name);
   }
-  
+
   console.log('节点已更新:', newData);
 };
 
@@ -132,11 +122,12 @@ const handleSave = async () => {
 
   try {
     isSaving.value = true;
+    Toast.showLoading('正在保存...');
 
     // 收集节点信息
     const nodes: any[] = [];
     const graphNodes = graph?.getNodes() || [];
-    
+
     for (const node of graphNodes) {
       const data = node.getData() || {};
       nodes.push({
@@ -152,15 +143,15 @@ const handleSave = async () => {
     // 收集连线信息
     const edges: any[] = [];
     const graphEdges = graph?.getEdges() || [];
-    
+
     for (const edge of graphEdges) {
       const source = edge.getSourceNode();
       const target = edge.getTargetNode();
-      
+
       if (source && target) {
         const sourceData = source.getData() || {};
         const targetData = target.getData() || {};
-        
+
         edges.push({
           sourceNodeKey: sourceData.nodeKey,
           targetNodeKey: targetData.nodeKey,
@@ -180,16 +171,16 @@ const handleSave = async () => {
     const result = await workflowService.saveWorkflow(workflowData);
     console.log('工作流保存成功:', result);
 
-    closeLoading();
+    Toast.closeLoading();
     // 提示保存成功
-    await showSuccess('工作流保存成功!');
+    Toast.success('工作流保存成功!');
 
   } catch (error: any) {
     console.error('保存工作流时出错:', error);
-    closeLoading();
+    Toast.closeLoading();
     // 显示错误信息
     const errorMessage = error.response?.data?.message || '保存失败';
-    showError(`保存失败: ${errorMessage}`);
+    Toast.error(`保存失败: ${errorMessage}`);
   } finally {
     isSaving.value = false;
   }
@@ -210,14 +201,14 @@ const setupGraphEvents = () => {
       selectedNode.value.attr('body/strokeWidth', 1);
       selectedNode.value.attr('body/stroke', '#5F95FF');
     }
-    
+
     // 设置新选中的节点
     selectedNode.value = node;
-    
+
     // 给选中的节点添加高亮效果
     node.attr('body/strokeWidth', 2);
     node.attr('body/stroke', '#ff7f0e'); // 橙色边框
-    
+
     // 可选：让选中的节点在视图中居中
     // graph?.centerCell(node);
   });
@@ -396,24 +387,27 @@ const initGraph = () => {
 const loadWorkflow = async (id: string) => {
   try {
     isSaving.value = true;
+    Toast.showLoading('加载工作流...');
     const result = await workflowService.getWorkflow(id);
     const workflowData = result
-    
+
     // 更新工作流基本信息
     workflowName.value = workflowData.name || '未命名工作流';
     workflowDesc.value = workflowData.description || '';
-    
+
     // 如果有节点和边的数据，加载它们
     if (workflowData.nodes && Array.isArray(workflowData.nodes)) {
       console.log('加载工作流节点:', workflowData.nodes.length);
       // 加载节点和连线的逻辑...
       // 这里需要实现加载节点到画布的具体逻辑
     }
-    
+
+    Toast.closeLoading();
     console.log('工作流加载成功:', workflowData);
   } catch (error) {
     console.error('加载工作流失败:', error);
-    alert('加载工作流数据失败');
+    Toast.closeLoading();
+    Toast.error('加载工作流数据失败');
   } finally {
     isSaving.value = false;
   }
@@ -426,7 +420,7 @@ const cleanup = () => {
     graph.off('node:click');
     graph.off('blank:click');
   }
-  
+
   // 清理引用
   graph = null;
 };
@@ -443,7 +437,7 @@ onMounted(() => {
   if (graphContainer.value) {
     initGraph();
     setupKeyboardEvents(); // 设置键盘事件
-    
+
     // 如果有ID参数，加载对应的工作流
     if (workflowId) {
       console.log('加载工作流:', workflowId);

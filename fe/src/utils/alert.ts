@@ -1,53 +1,28 @@
 import Swal from 'sweetalert2';
 import { createApp, defineComponent, h } from 'vue';
+import { Toast } from './toast';
 
-// 成功提示
+// 成功提示 - 改为使用Toast
 export const showSuccess = (message: string) => {
-  return Swal.fire({
-    title: '成功',
-    text: message,
-    icon: 'success',
-    confirmButtonText: '确定',
-    confirmButtonColor: '#52c41a',
-    timer: 2000,
-    timerProgressBar: true
-  });
+  return Toast.success(message);
 };
 
-// 错误提示
+// 错误提示 - 改为使用Toast
 export const showError = (message: string) => {
-  return Swal.fire({
-    title: '错误',
-    text: message,
-    icon: 'error',
-    confirmButtonText: '确定',
-    confirmButtonColor: '#f5222d'
-  });
+  return Toast.error(message);
 };
 
-// 警告提示
+// 警告提示 - 改为使用Toast
 export const showWarning = (message: string) => {
-  return Swal.fire({
-    title: '警告',
-    text: message,
-    icon: 'warning',
-    confirmButtonText: '确定',
-    confirmButtonColor: '#faad14'
-  });
+  return Toast.warning(message);
 };
 
-// 普通信息提示
+// 普通信息提示 - 改为使用Toast
 export const showInfo = (message: string) => {
-  return Swal.fire({
-    title: '提示',
-    text: message,
-    icon: 'info',
-    confirmButtonText: '确定',
-    confirmButtonColor: '#1890ff'
-  });
+  return Toast.info(message);
 };
 
-// 确认对话框
+// 确认对话框 - 保留SweetAlert2实现
 export const showConfirm = (title: string, text: string, confirmButtonText = '确定') => {
   return Swal.fire({
     title,
@@ -73,20 +48,14 @@ export const showDialog = (title: string, html: string, confirmButtonText = '确
   });
 };
 
-// 加载中
+// 加载中 - 改为使用Toast
 export const showLoading = (title = '处理中...') => {
-  return Swal.fire({
-    title,
-    allowOutsideClick: false,
-    didOpen: () => {
-      Swal.showLoading();
-    }
-  });
+  return Toast.showLoading(title);
 };
 
-// 关闭加载
+// 关闭加载 - 改为使用Toast
 export const closeLoading = () => {
-  Swal.close();
+  Toast.closeLoading();
 };
 
 // 带导航功能的对话框

@@ -2,25 +2,25 @@ package dto
 
 import (
 	"api-flow/engine"
-	"api-flow/models"
+	"api-flow/engine/core"
 )
 
 // WorkflowDTO 工作流与节点数据传输对象
 type WorkflowWithNodesDTO struct {
-	Workflow models.Workflow `json:"workflow"`
-	Nodes    []models.Node   `json:"nodes"`
+	Workflow engine.Workflow `json:"workflow"`
+	Nodes    []engine.Node   `json:"nodes"`
 }
 
 // WorkflowDTO 工作流与节点响应数据传输对象
 type WorkflowDTO struct {
 	ID          uint                  `json:"id"`
 	Name        string                `json:"name"`
-	Status      models.WorkflowStatus `json:"status"`
+	Status      engine.WorkflowStatus `json:"status"`
 	Description string                `json:"description"`
 	CreatedAt   string                `json:"created_at"`
 	UpdatedAt   string                `json:"updated_at"`
-	Nodes       []models.Node         `json:"nodes"`
-	Edges       []models.Edge         `json:"edges"`
+	Nodes       []engine.Node         `json:"nodes"`
+	Edges       []engine.Edge         `json:"edges"`
 }
 
 // WorkflowExecutionRequest 工作流执行请求
@@ -34,8 +34,8 @@ type WorkflowExecutionRequest struct {
 type WorkflowExecutionResult struct {
 	WorkflowID   uint                   `json:"workflowId"`
 	WorkflowName string                 `json:"workflowName"`
-	Status       models.ExecuteStatus   `json:"status"`
-	NodeResults  []engine.ExecuteResult `json:"nodeResults"`
+	Status       core.ExecuteStatus   `json:"status"`
+	NodeResults  []core.ExecuteResult `json:"nodeResults"`
 	ErrorMessage string                 `json:"errorMessage,omitempty"`
 	Duration     int64                  `json:"duration"`
 }

@@ -1,25 +1,16 @@
 package engine
 
 import (
+	"api-flow/engine/core"
 	"errors"
 	"fmt"
-
-	"api-flow/models"
 )
-
-// ExecuteResult 节点执行结果
-type ExecuteResult struct {
-	NodeID  uint                   `json:"nodeId"`
-	NodeKey string                 `json:"nodeKey"`
-	Status  models.ExecuteStatus   `json:"status"`
-	Data    map[string]interface{} `json:"data,omitempty"`
-	Error   string                 `json:"error,omitempty"`
-}
 
 // NodeExecutor 节点执行器接口
 type NodeExecutor interface {
-	Execute(node *models.Node, inputs map[string]interface{}) *ExecuteResult
-	ValidateConfig(config models.ItemConfig) error
+	Execute(node *Node, inputs map[string]interface{}) *core.ExecuteResult
+	ValidateConfig(config ItemConfig) error
+	GetOutputFormat() core.ParamFormat
 }
 
 // NodeEngine 节点执行引擎
@@ -34,8 +25,8 @@ func NewNodeEngine() *NodeEngine {
 	}
 
 	// 注册默认执行器
-	engine.RegisterExecutor(models.NodeTypeAPI, NewAPINodeExecutor())
-	engine.RegisterExecutor(models.NodeTypeText, NewTextNodeExecutor())
+	engine.RegisterExecutor(ApiNodeType.Code,  NewAPINodeExecutor())
+	engine.RegisterExecutor(TextNodeType.Code, NewTextNodeExecutor())
 
 	return engine
 }
@@ -55,7 +46,7 @@ func (e *NodeEngine) GetExecutor(nodeTypeCode string) (NodeExecutor, error) {
 }
 
 // ExecuteNode 执行节点
-func (e *NodeEngine) ExecuteNode(node *models.Node, inputs map[string]interface{}) (*ExecuteResult, error) {
+func (e *NodeEngine) ExecuteNode(node *Node, inputs map[string]interface{}) (*core.ExecuteResult, error) {
 	if node == nil {
 		return nil, errors.New("节点不能为空")
 	}

@@ -1,8 +1,23 @@
 package engine
 
-import (
-	"api-flow/models"
-)
+import "api-flow/engine/core"
+
+var textNodeOutputFormat = core.ParamFormat{
+	core.NewParamDefination("output", core.DataTypeString, "echo + input text content"),
+}
+
+var textNodeInputFormat = core.ParamFormat{
+	core.NewParamDefination("content", core.DataTypeString, "请输入文本内容"),
+}
+
+var TextNodeType = &NodeType{
+	Code:        "text",
+	Name:        "文本节点",
+	Description: "直接返回配置的文本内容的节点",
+	Category:    "Task",
+	Input: textNodeInputFormat,
+	Output: textNodeOutputFormat,
+}
 
 // TextNodeExecutor 文本节点执行器
 type TextNodeExecutor struct{}
@@ -12,8 +27,12 @@ func NewTextNodeExecutor() *TextNodeExecutor {
 	return &TextNodeExecutor{}
 }
 
+func (e *TextNodeExecutor) GetOutputFormat() core.ParamFormat {
+	return textNodeOutputFormat
+}
+
 // ValidateConfig 验证文本节点配置
-func (e *TextNodeExecutor) ValidateConfig(config models.ItemConfig) error {
+func (e *TextNodeExecutor) ValidateConfig(config ItemConfig) error {
 	// if config == nil {
 	// 	return errors.New("配置不能为空")
 	// }
@@ -26,18 +45,18 @@ func (e *TextNodeExecutor) ValidateConfig(config models.ItemConfig) error {
 	return nil
 }
 
-func (e *TextNodeExecutor) newfailExecuteResult(node *models.Node, msg string) *ExecuteResult {
-	return &ExecuteResult{
+func (e *TextNodeExecutor) newfailExecuteResult(node *Node, msg string) *core.ExecuteResult {
+	return &core.ExecuteResult{
 		NodeID: node.ID,
 		NodeKey: node.NodeKey,
-		Status: models.ExecuteStatusError,
+		Status: core.ExecuteStatusError,
 		Data:    nil,
 		Error:   msg,
 	}
 }
 
 // Execute 执行文本节点逻辑
-func (e *TextNodeExecutor) Execute(node *models.Node, inputs map[string]interface{}) *ExecuteResult {
+func (e *TextNodeExecutor) Execute(node *Node, inputs map[string]interface{}) *core.ExecuteResult {
 	config := node.Config
 
 	// 获取文本内容
@@ -62,13 +81,12 @@ func (e *TextNodeExecutor) Execute(node *models.Node, inputs map[string]interfac
 	}
 
 	// 返回执行结果
-	return &ExecuteResult{
+	return &core.ExecuteResult{
 		NodeID:  node.ID,
 		NodeKey: node.NodeKey,
-		Status: models.ExecuteStatusSuccess,
-		Data: map[string]interface{}{
+		Status: core.ExecuteStatusSuccess,
+		Data: core.ExecuteOutput{
 			"output":      "echo: " + contentStr,
-			"content_type": contentType,
 		},
 	}
 }

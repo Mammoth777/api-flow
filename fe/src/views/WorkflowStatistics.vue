@@ -137,7 +137,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { workflowService } from '../services/workflow.service';
-import { showSuccess, showError, showComponentDialog } from '../utils/alert';
+import { showComponentDialog } from '../utils/alert'; // 保留需要的对话框
 import HighlightCode from '../components/HighlightCode.vue';
 import { serverUrl } from '../env';
 
@@ -179,13 +179,6 @@ const totalPages = computed(() => Math.ceil(total.value / pageSize.value) || 1);
 // 返回上一页
 const goBack = () => {
   router.push('/workflows');
-};
-
-// 复制命令
-const copyCommand = () => {
-  navigator.clipboard.writeText(curlCommand.value)
-    .then(() => showSuccess('命令已复制到剪贴板'))
-    .catch(err => showError('复制失败: ' + err));
 };
 
 // 获取工作流统计数据

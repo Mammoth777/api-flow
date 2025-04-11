@@ -35,7 +35,29 @@
         </div>
       </div>
       
-      <!-- 添加删除节点按钮 -->
+      <!-- 新增：节点输出格式区域 -->
+      <div class="form-group output-format-section" v-if="nodeOutputs && nodeOutputs.length > 0">
+        <label>输出格式</label>
+        <div class="output-format-container">
+          <table class="output-format-table">
+            <thead>
+              <tr>
+                <th>参数名</th>
+                <th>数据类型</th>
+                <th>描述</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(output, idx) in nodeOutputs" :key="idx">
+                <td class="param-name">{{ output.field }}</td>
+                <td class="param-type">{{ output.type }}</td>
+                <td class="param-desc">{{ output.desc }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
       <div class="node-actions">
         <button class="delete-node-btn" @click="confirmDeleteNode">删除节点</button>
       </div>
@@ -44,10 +66,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { Cell } from '@antv/x6';
 import type { NodeType } from '../services/node-type.service';
-import { showConfirm } from '../utils/alert';
 
 // Props 定义，使用默认值防止空引用
 const props = defineProps({
@@ -69,6 +90,14 @@ const nodeData = ref({
   name: '',
   description: '',
   config: {} as Record<string, any>
+});
+
+// 计算属性：找到当前节点类型的输出格式
+const nodeOutputs = computed(() => {
+  const nodeType = props.nodeTypes.find(nodeType => {
+    return nodeType.code === nodeData.value.nodeType;
+  })
+  return nodeType?.output || []
 });
 
 // JSON 配置编辑器
@@ -165,15 +194,8 @@ const updateConfig = () => {
 // 确认并删除节点
 const confirmDeleteNode = () => {
   if (!props.selectedNode) return;
-  
-  showConfirm('删除节点', '确定要删除此节点吗？此操作无法撤销。', '删除').then((result) => {
-    if (result.isConfirmed) {
-      // 发送删除节点事件给父组件处理
-      emit('deleteNode', props.selectedNode);
-      // 关闭节点编辑器
-      emit('close');
-    }
-  });
+  emit('deleteNode', props.selectedNode);
+  emit('close');
 };
 </script>
 
@@ -293,5 +315,53 @@ const confirmDeleteNode = () => {
 
 .delete-node-btn:hover {
   background-color: #ff7875;
+}
+
+/* 输出格式区域样式 */
+.output-format-section {
+  margin-top: 16px;
+  margin-bottom: 16px;
+}
+
+.output-format-container {
+  background-color: #fafafa;
+  border: 1px solid #e8e8e8;
+  border-radius: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  font-size: 12px;
+}
+
+.output-format-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.output-format-table th,
+.output-format-table td {
+  padding: 6px 8px;
+  text-align: left;
+  border-bottom: 1px solid #e8e8e8;
+  font-size: 12px;
+}
+
+.output-format-table th {
+  background-color: #f0f0f0;
+  font-weight: 500;
+  color: #666;
+}
+
+.param-name {
+  font-weight: 500;
+  color: #1890ff;
+}
+
+.param-type {
+  color: #722ed1;
+  font-family: monospace;
+}
+
+.param-desc {
+  color: #666;
 }
 </style>

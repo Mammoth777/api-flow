@@ -2,7 +2,7 @@ package services
 
 import (
 	"api-flow/engine"
-	"api-flow/models"
+	"api-flow/engine/core"
 	"fmt"
 )
 
@@ -20,16 +20,16 @@ func NewNodeExecutionService(nodeService *NodeService) *NodeExecutionService {
 	}
 }
 
-func (s *NodeExecutionService) getRealValue(value interface{}, results []engine.ExecuteResult) (interface{}, error) {
+func (s *NodeExecutionService) getRealValue(value interface{}, results []core.ExecuteResult) (interface{}, error) {
 	if expression, ok := value.(string); ok {
-		parser := engine.NewExpressionParser(results)
+		parser := core.NewExpressionParser(results)
 		return parser.Parse(expression)
 	} else {
 		return value, nil
 	}
 }
 
-func (s *NodeExecutionService) ExecuteNode(node *models.Node, inputs map[string]interface{}, results []engine.ExecuteResult) (*engine.ExecuteResult, error) {
+func (s *NodeExecutionService) ExecuteNode(node *engine.Node, inputs map[string]interface{}, results []core.ExecuteResult) (*core.ExecuteResult, error) {
 	config := node.Config
 	if config != nil {
 		// 覆盖默认输入
@@ -50,7 +50,7 @@ func (s *NodeExecutionService) ExecuteNode(node *models.Node, inputs map[string]
 }
 
 // ExecuteNode 执行节点
-func (s *NodeExecutionService) ExecuteNodeById(nodeID uint, inputs map[string]interface{}, results []engine.ExecuteResult) (*engine.ExecuteResult, error) {
+func (s *NodeExecutionService) ExecuteNodeById(nodeID uint, inputs map[string]interface{}, results []core.ExecuteResult) (*core.ExecuteResult, error) {
 	// 检查节点状态
 	// if node.Status != "active" {
 	// 	return nil, errors.New("节点未激活，无法执行")
@@ -60,7 +60,7 @@ func (s *NodeExecutionService) ExecuteNodeById(nodeID uint, inputs map[string]in
 	return s.ExecuteNodeWithoutWorkflow(nodeID, inputs)
 }
 
-func (s *NodeExecutionService) ExecuteNodeWithoutWorkflow(nodeID uint, inputs map[string]interface{}) (*engine.ExecuteResult, error) {
+func (s *NodeExecutionService) ExecuteNodeWithoutWorkflow(nodeID uint, inputs map[string]interface{}) (*core.ExecuteResult, error) {
 	// TODO 验证工作流是否已发布
 	// ...
 	

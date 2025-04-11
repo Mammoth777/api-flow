@@ -1,5 +1,12 @@
 import apiClient from './api-client';
 
+type ParamDefine = {
+  field: string;
+  type: string;
+  desc: string;
+  default: any;
+}
+
 // 节点类型接口，匹配API返回的格式
 export interface NodeType {
   id: number;
@@ -10,6 +17,8 @@ export interface NodeType {
   name: string;
   description: string;
   category: string;
+  input: ParamDefine[]
+  output: ParamDefine[]
 }
 
 // 节点类型服务

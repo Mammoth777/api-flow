@@ -1,6 +1,7 @@
-package models
+package engine
 
 import (
+	"api-flow/engine/core"
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
@@ -42,7 +43,7 @@ func (c *ItemConfig) Scan(value interface{}) error {
 
 // Node 节点模型
 type Node struct {
-	BasicModel
+	core.BasicModel
 	NodeKey     string     `gorm:"size:255;not null" json:"nodeKey"`
 	NodeType    string     `json:"nodeType"`
 	Name        string     `gorm:"size:255;not null" json:"name"`

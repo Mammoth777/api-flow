@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"api-flow/models"
+	"api-flow/engine"
 	"api-flow/services"
 )
 
@@ -51,7 +51,7 @@ func (h *NodeHandler) Update(c *gin.Context) {
 		return
 	}
 
-	var node models.Node
+	var node engine.Node
 	if err := c.ShouldBindJSON(&node); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

@@ -1,9 +1,13 @@
-package models
+package engine
 
-import "github.com/jinzhu/gorm"
+import (
+	"api-flow/engine/core"
+
+	"github.com/jinzhu/gorm"
+)
 
 type Edge struct {
-	BasicModel
+	core.BasicModel
 	SourceNodeKey string     `json:"sourceNodeKey"`
 	TargetNodeKey string     `json:"targetNodeKey"`
 	Config        ItemConfig `gorm:"type:json" json:"config"`

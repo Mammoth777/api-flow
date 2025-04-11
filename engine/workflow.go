@@ -1,6 +1,8 @@
-package models
+package engine
 
 import (
+	"api-flow/engine/core"
+
 	"github.com/jinzhu/gorm"
 )
 
@@ -13,7 +15,7 @@ const (
 
 // Workflow 流程模型
 type Workflow struct {
-	BasicModel
+	core.BasicModel
 	Name        string         `gorm:"size:255;not null" json:"name"`
 	Description string         `gorm:"size:1000" json:"description"`
 	Status      WorkflowStatus `json:"status"`
