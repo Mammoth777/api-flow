@@ -74,6 +74,31 @@ export const registerCustomNodes = () => {
     // 标记该节点类型已注册
     registeredNodeTypes.add('task');
   }
+
+  if (!registeredNodeTypes.has('system')) {
+    Graph.registerNode('system', {
+      inherit: 'rect',
+      width: 120,
+      height: 60,
+      attrs: {
+        body: {
+          fill: '#ffffff',
+          stroke: '#5F95FF',
+          strokeWidth: 1,
+          rx: 6,
+          ry: 6,
+        },
+        label: {
+          text: '系统节点',
+          fill: '#333',
+          fontSize: 14,
+          fontWeight: 'bold',
+        },
+      },
+      ports: { ...ports },
+    });
+    registeredNodeTypes.add('system');
+  }
 }
 
 // 根据节点代码获取类别
@@ -81,9 +106,14 @@ export const getNodeCategory = (code: string): string => {
   const categoryMap: Record<string, string> = {
     'api': 'task',
     'text': 'task',
+    'execInput': 'system'
   };
 
-  return categoryMap[code] || '其他节点';
+  if (!categoryMap[code]) {
+    throw new Error(`节点代码 "${code}" 未定义, 请在 src/components/workflow.ts 中添加`);
+  }
+
+  return categoryMap[code];
 };
 
 // 根据节点代码获取颜色

@@ -33,61 +33,25 @@
           <textarea v-model="nodeData.description" @blur="debouncedUpdateNode" placeholder="输入节点描述" rows="2"></textarea>
         </div>
         
-        <!-- 新增：节点输入配置区域 -->
-        <div class="form-group input-config-section" v-if="nodeInputs && nodeInputs.length > 0">
-          <label>节点输入配置</label>
-          <NodeInputConfig 
-            :input-fields="nodeInputs" 
-            v-model="nodeData.config" 
-            @update:modelValue="onInputConfigUpdate"
-          />
-        </div>
-
-        <!-- 保留原有的节点配置编辑器，作为高级模式 -->
-        <div class="form-group advanced-config" v-if="showAdvancedConfig">
-          <div class="advanced-config-header">
-            <label>高级配置（JSON）</label>
-            <button class="toggle-button" @click="showAdvancedConfig = false">隐藏</button>
-          </div>
-          <textarea 
-            v-model="configStr" 
-            @blur="updateConfig" 
-            class="config-editor" 
-            placeholder="输入 JSON 格式配置" 
-            rows="6"
-          ></textarea>
-          <div class="error-message" v-if="configError">
-            {{ configError }}
-          </div>
-        </div>
-        <div class="form-group" v-else>
-          <button class="toggle-button show-advanced" @click="showAdvancedConfig = true">
-            显示高级配置
-          </button>
-        </div>
+        <!-- 将节点输入配置抽取为独立组件，同时包含高级模式 -->
+        <NodeInputSection 
+          :node-type="nodeData.nodeType"
+          :input-fields="nodeInputs"
+          :node-config="nodeData.config"
+          :show-advanced-config="showAdvancedConfig"
+          :config-str="configStr"
+          :config-error="configError"
+          @update:config="onInputConfigUpdate"
+          @update:config-str="updateConfigString"
+          @toggle-advanced-mode="showAdvancedConfig = !showAdvancedConfig"
+          @update-advanced-config="updateConfig"
+        />
         
-        <!-- 节点输出格式区域 -->
-        <div class="form-group output-format-section" v-if="nodeOutputs && nodeOutputs.length > 0">
-          <label>输出格式</label>
-          <div class="output-format-container">
-            <table class="output-format-table">
-              <thead>
-                <tr>
-                  <th>参数名</th>
-                  <th>数据类型</th>
-                  <th>描述</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(output, idx) in nodeOutputs" :key="idx">
-                  <td class="param-name">{{ output.field }}</td>
-                  <td class="param-type">{{ output.type }}</td>
-                  <td class="param-desc">{{ output.desc }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <!-- 将节点输出格式抽取为独立组件 -->
+        <NodeOutputSection 
+          v-if="nodeOutputs && nodeOutputs.length > 0"
+          :outputs="nodeOutputs"
+        />
       </div>
       
       <!-- 删除节点按钮，始终显示 -->
@@ -101,8 +65,9 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { Cell } from '@antv/x6';
-import type { NodeType } from '../services/node-type.service';
-import NodeInputConfig from './NodeInputConfig.vue';
+import type { NodeType } from '../../services/node-type.service';
+import NodeInputSection from './NodeInputSection.vue';
+import NodeOutputSection from './NodeOutputSection.vue';
 
 // Props 定义，使用默认值防止空引用
 const props = defineProps({

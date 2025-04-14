@@ -80,16 +80,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue';
-
-// 定义节点输入字段的类型
-interface InputField {
-  field: string;
-  type: 'string' | 'number' | 'object' | 'options' | 'boolean';
-  desc: string;
-  default: any;
-  // 仅在 type 为 'options' 时使用
-  options?: string[] | { label: string, value: number | string}[];
-}
+import { InputField } from './types';
 
 // 接收的属性
 const props = defineProps({

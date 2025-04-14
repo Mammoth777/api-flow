@@ -12,8 +12,9 @@
           v-show="selectedNode" 
           :selectedNode="selectedNode" 
           :nodeTypes="nodeTypes"
-          :initialDisplayMode="inspectorMode"
           :getGraphBounding="getGraphBounding"
+          :inspectorMode="inspectorMode"
+          @update:inspectorMode="updateInspectorMode"
           @close="clearSelectedNode" 
           @nodeUpdated="handleNodeUpdated" 
           @deleteNode="handleDeleteNode"
@@ -28,7 +29,7 @@ import { Graph, Shape, Cell } from '@antv/x6'
 import '@antv/x6-vue-shape'
 import { onMounted, ref, onUnmounted, watch } from 'vue'
 import WorkflowInfo from './WorkflowInfo.vue'
-import NodeInspector from './NodeInspector.vue'
+import NodeInspector from './nodeInspector/NodeInspector.vue'
 import NodeTypePanel from './NodeTypePanel.vue'
 import { workflowService } from '../services/workflow.service'
 import type { NodeType } from '../services/node-type.service'
@@ -74,6 +75,10 @@ const clickTimer = ref<number | null>(null);
 // 单击延迟时间（毫秒）
 const clickDelay = 300;
 
+function updateInspectorMode(mode: 'compact' | 'full') {
+  inspectorMode.value = mode;
+}
+
 // 清除选中节点和边（安全处理）
 const clearSelectedNode = () => {
   // 如果有选中的节点，先恢复其样式
@@ -109,7 +114,7 @@ const handleDeleteNode = (node: Cell) => {
 
   // 记录节点数据，以便可能需要的后续操作
   const nodeData = node.getData();
-  console.log(`正在删除节点:`, nodeData);
+  console.log(`正在删除节点:`, inspectorMode.value, nodeData);
 
   // 从图中移除节点
   node.remove();
