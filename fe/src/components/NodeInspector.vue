@@ -6,7 +6,7 @@
       <div class="header-actions">
         <!-- 添加切换按钮 -->
         <button class="toggle-mode-button" @click="toggleMode">
-          {{ isCompactMode ? '展开详情' : '收起详情' }}
+          {{ isCompactMode ? '编辑' : '收起详情' }}
         </button>
         <button class="close-button" @click="$emit('close')">&times;</button>
       </div>
@@ -115,7 +115,7 @@ const props = defineProps({
     default: () => []
   },
   // 增加新的props来控制初始展开模式
-  initialDisplayMode: {
+  inspectorMode: {
     type: String,
     default: 'compact' // 'compact' 或 'full'
   },
@@ -126,7 +126,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['close', 'nodeUpdated', 'deleteNode']);
+const emit = defineEmits(['close', 'nodeUpdated', 'deleteNode', 'update:inspectorMode']);
 
 // 表单数据，使用安全的默认值
 const nodeData = ref({
@@ -137,11 +137,12 @@ const nodeData = ref({
 });
 
 // 添加展示模式状态
-const isCompactMode = ref(props.initialDisplayMode === 'compact');
+const isCompactMode = ref(props.inspectorMode === 'compact');
 
 // 切换展示模式
 const toggleMode = () => {
   isCompactMode.value = !isCompactMode.value;
+  emit('update:inspectorMode', isCompactMode.value ? 'compact' : 'full');
 };
 
 // 显示高级配置的状态
@@ -197,7 +198,7 @@ const resetForm = () => {
   configError.value = '';
   showAdvancedConfig.value = false;
   // 重置为默认显示模式
-  isCompactMode.value = props.initialDisplayMode === 'compact';
+  isCompactMode.value = props.inspectorMode === 'compact';
 };
 
 // 更新配置字符串显示，安全处理 JSON 转换

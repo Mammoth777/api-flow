@@ -7,6 +7,7 @@ import (
 	"api-flow/config"
 	"api-flow/database"
 	"api-flow/engine"
+	"api-flow/engine/engine_nodes"
 	"api-flow/router"
 )
 
@@ -29,12 +30,12 @@ func main() {
 	}
 	
 	// 迁移节点类型表并初始化基础类型
-	if err := engine.MigrateNodeType(database.DB); err != nil {
+	if err := engine_nodes.MigrateNodeType(database.DB); err != nil {
 		log.Fatalf("节点类型表迁移失败: %v", err)
 	}
 	
 	// 迁移节点表
-	if err := engine.MigrateNode(database.DB); err != nil {
+	if err := engine_nodes.MigrateNode(database.DB); err != nil {
 		log.Fatalf("节点表迁移失败: %v", err)
 	}
 

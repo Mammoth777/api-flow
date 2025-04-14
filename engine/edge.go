@@ -10,7 +10,7 @@ type Edge struct {
 	core.BasicModelWithUUID
 	SourceNodeKey string     `json:"sourceNodeKey"`
 	TargetNodeKey string     `json:"targetNodeKey"`
-	Config        ItemConfig `gorm:"type:json" json:"config"`
+	Config        core.ItemConfig `gorm:"type:json" json:"config"`
 	WorkflowID    uint       `json:"workflowId"`
 }
 

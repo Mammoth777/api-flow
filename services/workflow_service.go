@@ -12,6 +12,7 @@ import (
 	"api-flow/dto"
 	"api-flow/engine"
 	"api-flow/engine/core"
+	"api-flow/engine/engine_nodes"
 )
 
 type Statistics struct {
@@ -173,7 +174,7 @@ func (s *WorkflowService) SaveWorkflow(workflowDto *dto.WorkflowDTO) (*dto.Workf
 		workflowDto.Nodes[i].WorkflowID = workflow.ID
 
 		// 验证节点类型是否存在
-		var nodeType engine.NodeType
+		var nodeType engine_nodes.NodeType
 		if err := tx.Where("code = ?", workflowDto.Nodes[i].NodeType).First(&nodeType).Error; err != nil {
 			tx.Rollback()
 			if gorm.IsRecordNotFoundError(err) {
@@ -292,7 +293,7 @@ func (s *WorkflowService) GetWorkflowWithNodes(workflowID uint) (*dto.WorkflowDT
 	}
 
 	// 获取关联的节点
-	var nodes []engine.Node
+	var nodes []engine_nodes.Node
 	if err := s.DB.Where("workflow_id = ?", workflowID).Find(&nodes).Error; err != nil {
 		return nil, err
 	}
@@ -328,7 +329,7 @@ func (s *WorkflowService) ExecuteWorkflow(request *dto.WorkflowExecutionRequest)
 	}
 
 	// 获取工作流的所有节点
-	var nodes []engine.Node
+	var nodes []engine_nodes.Node
 	if err := s.DB.Where("workflow_id = ?", request.WorkflowID).Find(&nodes).Error; err != nil {
 		return nil, fmt.Errorf("获取工作流节点失败: %v", err)
 	}
@@ -340,7 +341,7 @@ func (s *WorkflowService) ExecuteWorkflow(request *dto.WorkflowExecutionRequest)
 	}
 
 	// 建立节点映射，方便快速查找
-	nodeMap := make(map[string]*engine.Node)
+	nodeMap := make(map[string]*engine_nodes.Node)
 	for i := range nodes {
 		nodeMap[nodes[i].NodeKey] = &nodes[i]
 	}
@@ -406,9 +407,9 @@ func (s *WorkflowService) ExecuteWorkflow(request *dto.WorkflowExecutionRequest)
 	return executionResult, nil
 }
 
-func (s *WorkflowService) executeNodes(nodes []engine.Node, edges []engine.Edge, inputs map[string]interface{}) ([]core.ExecuteResult, error) {
+func (s *WorkflowService) executeNodes(nodes []engine_nodes.Node, edges []engine.Edge, inputs map[string]interface{}) ([]core.ExecuteResult, error) {
 	// 建立节点映射，方便快速查找
-	nodeMap := make(map[string]*engine.Node)
+	nodeMap := make(map[string]*engine_nodes.Node)
 	for i := range nodes {
 		nodeMap[nodes[i].NodeKey] = &nodes[i]
 	}
@@ -470,7 +471,7 @@ nodeloop:
 }
 
 // getStartNodeKeyList 获取工作流的起始节点列表
-func (s *WorkflowService) getStartNodeKeyList(nodes []engine.Node, edges []engine.Edge) ([]string, error) {
+func (s *WorkflowService) getStartNodeKeyList(nodes []engine_nodes.Node, edges []engine.Edge) ([]string, error) {
 	if len(nodes) == 0 {
 		return nil, errors.New("工作流没有节点")
 	}

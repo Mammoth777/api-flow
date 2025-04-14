@@ -42,7 +42,7 @@ func SetupRouter() *gin.Engine {
 			nodes.GET("/:id", nodeHandler.Get)
 			// TODO: 此处可能要走workflow整体的保存/更新逻辑
 			nodes.PUT("/:id", nodeHandler.Update)
-			// nodes.DELETE("/:id", nodeHandler.Delete)
+			// engine_nodes.DELETE("/:id", nodeHandler.Delete)
 			nodes.POST("/:id/execute", nodeHandler.Execute) // 执行节点
 		}
 

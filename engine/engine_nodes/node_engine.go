@@ -1,4 +1,4 @@
-package engine
+package engine_nodes
 
 import (
 	"api-flow/engine/core"
@@ -9,7 +9,7 @@ import (
 // NodeExecutor 节点执行器接口
 type NodeExecutor interface {
 	Execute(node *Node, inputs map[string]interface{}) *core.ExecuteResult
-	ValidateConfig(config ItemConfig) error
+	ValidateConfig(config core.ItemConfig) error
 	GetOutputFormat() core.ParamFormat
 }
 

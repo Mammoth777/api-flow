@@ -1,9 +1,9 @@
-package engine
+package engine_nodes
 
 import "api-flow/engine/core"
 
 var textNodeOutputFormat = core.ParamFormat{
-	core.NewParamDefination("output", core.DataTypeString, "echo + input text content"),
+	core.NewParamDefination("output", core.DataTypeString, "input text content"),
 }
 
 var textNodeInputFormat = core.ParamFormat{
@@ -12,7 +12,7 @@ var textNodeInputFormat = core.ParamFormat{
 
 var TextNodeType = &NodeType{
 	Code:        "text",
-	Name:        "文本节点",
+	Name:        "文本",
 	Description: "直接返回配置的文本内容的节点",
 	Category:    "Task",
 	Input: textNodeInputFormat,
@@ -32,7 +32,7 @@ func (e *TextNodeExecutor) GetOutputFormat() core.ParamFormat {
 }
 
 // ValidateConfig 验证文本节点配置
-func (e *TextNodeExecutor) ValidateConfig(config ItemConfig) error {
+func (e *TextNodeExecutor) ValidateConfig(config core.ItemConfig) error {
 	// if config == nil {
 	// 	return errors.New("配置不能为空")
 	// }
@@ -86,7 +86,7 @@ func (e *TextNodeExecutor) Execute(node *Node, inputs map[string]interface{}) *c
 		NodeKey: node.NodeKey,
 		Status: core.ExecuteStatusSuccess,
 		Data: core.ExecuteOutput{
-			"output":      "echo: " + contentStr,
+			"output": contentStr,
 		},
 	}
 }

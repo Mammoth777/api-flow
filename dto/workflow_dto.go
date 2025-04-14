@@ -3,12 +3,13 @@ package dto
 import (
 	"api-flow/engine"
 	"api-flow/engine/core"
+	"api-flow/engine/engine_nodes"
 )
 
 // WorkflowDTO 工作流与节点数据传输对象
 type WorkflowWithNodesDTO struct {
 	Workflow engine.Workflow `json:"workflow"`
-	Nodes    []engine.Node   `json:"nodes"`
+	Nodes    []engine_nodes.Node   `json:"nodes"`
 }
 
 // WorkflowDTO 工作流与节点响应数据传输对象
@@ -19,7 +20,7 @@ type WorkflowDTO struct {
 	Description string                 `json:"description"`
 	CreatedAt   string                 `json:"created_at"`
 	UpdatedAt   string                 `json:"updated_at"`
-	Nodes       []engine.Node          `json:"nodes"`
+	Nodes       []engine_nodes.Node          `json:"nodes"`
 	Edges       []engine.Edge          `json:"edges"`
 }
 

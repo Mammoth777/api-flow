@@ -1,4 +1,4 @@
-package engine
+package engine_nodes
 
 import (
 	"api-flow/engine/core"
@@ -67,6 +67,9 @@ func MigrateNodeType(db *gorm.DB) error {
 
 	if count == 0 {
 		nodeTypes := []NodeType{
+			// 系统节点类型
+			*InputNodeType,
+			// 系统自带的任务节点类型
 			*ApiNodeType,
 			*TextNodeType,
 		}

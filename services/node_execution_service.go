@@ -1,22 +1,22 @@
 package services
 
 import (
-	"api-flow/engine"
 	"api-flow/engine/core"
+	"api-flow/engine/engine_nodes"
 	"fmt"
 )
 
 // NodeExecutionService 节点执行服务
 type NodeExecutionService struct {
 	nodeService *NodeService
-	nodeEngine  *engine.NodeEngine
+	nodeEngine  *engine_nodes.NodeEngine
 }
 
 // NewNodeExecutionService 创建节点执行服务实例
 func NewNodeExecutionService(nodeService *NodeService) *NodeExecutionService {
 	return &NodeExecutionService{
 		nodeService: nodeService,
-		nodeEngine:  engine.NewNodeEngine(),
+		nodeEngine:  engine_nodes.NewNodeEngine(),
 	}
 }
 
@@ -29,7 +29,7 @@ func (s *NodeExecutionService) getRealValue(value interface{}, results []core.Ex
 	}
 }
 
-func (s *NodeExecutionService) ExecuteNode(node *engine.Node, inputs map[string]interface{}, results []core.ExecuteResult) (*core.ExecuteResult, error) {
+func (s *NodeExecutionService) ExecuteNode(node *engine_nodes.Node, inputs map[string]interface{}, results []core.ExecuteResult) (*core.ExecuteResult, error) {
 	config := node.Config
 	if config != nil {
 		// 覆盖默认输入

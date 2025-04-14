@@ -102,6 +102,11 @@ const clearSelectedEdge = () => {
 const handleDeleteNode = (node: Cell) => {
   if (!node) return;
 
+  // 如果正在编辑节点， 则不需要删除
+  if (inspectorMode.value === 'full') {
+    return;
+  }
+
   // 记录节点数据，以便可能需要的后续操作
   const nodeData = node.getData();
   console.log(`正在删除节点:`, nodeData);

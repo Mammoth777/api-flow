@@ -1,4 +1,4 @@
-package engine
+package engine_nodes
 
 import (
 	"api-flow/engine/core"
@@ -28,7 +28,7 @@ var apiNodeInputFormat = core.ParamFormat{
 }
 var ApiNodeType = &NodeType{
 	Code:        "api",
-	Name:        "API节点",
+	Name:        "API",
 	Description: "发送HTTP请求并处理响应的节点",
 	Category:    "Task",
 	Input: apiNodeInputFormat,
@@ -54,7 +54,7 @@ func (e *APINodeExecutor) GetOutputFormat() core.ParamFormat {
 }
 
 // ValidateConfig 验证API节点配置
-func (e *APINodeExecutor) ValidateConfig(config ItemConfig) error {
+func (e *APINodeExecutor) ValidateConfig(config core.ItemConfig) error {
 	if config == nil {
 		return errors.New("配置不能为空")
 	}

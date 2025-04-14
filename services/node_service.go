@@ -7,6 +7,7 @@ import (
 
 	"api-flow/database"
 	"api-flow/engine"
+	"api-flow/engine/engine_nodes"
 )
 
 // NodeService 节点服务
@@ -22,8 +23,8 @@ func NewNodeService() *NodeService {
 }
 
 // GetNodeByID 通过ID获取节点
-func (s *NodeService) GetNodeByID(id uint) (*engine.Node, error) {
-	var node engine.Node
+func (s *NodeService) GetNodeByID(id uint) (*engine_nodes.Node, error) {
+	var node engine_nodes.Node
 	if err := s.DB.First(&node, id).Error; err != nil {
 		if gorm.IsRecordNotFoundError(err) {
 			return nil, errors.New("节点不存在")
@@ -34,7 +35,7 @@ func (s *NodeService) GetNodeByID(id uint) (*engine.Node, error) {
 }
 
 // UpdateNode 更新节点
-func (s *NodeService) UpdateNode(id uint, node *engine.Node) error {
+func (s *NodeService) UpdateNode(id uint, node *engine_nodes.Node) error {
 	existingNode, err := s.GetNodeByID(id)
 	if err != nil {
 		return err
@@ -50,7 +51,7 @@ func (s *NodeService) UpdateNode(id uint, node *engine.Node) error {
 
 	// 如果节点类型有更改，验证新节点类型是否存在
 	if node.NodeType != "" && node.NodeType != existingNode.NodeType {
-		var nodeType engine.NodeType
+		var nodeType engine_nodes.NodeType
 		if err := s.DB.Where("code = ?", node.NodeType).First(&nodeType).Error; err != nil {
 			if gorm.IsRecordNotFoundError(err) {
 				return errors.New("节点类型不存在")
@@ -82,12 +83,12 @@ func (s *NodeService) DeleteNode(id uint) error {
 		return err
 	}
 
-	return s.DB.Delete(&engine.Node{}, id).Error
+	return s.DB.Delete(&engine_nodes.Node{}, id).Error
 }
 
 // GetNodesByWorkflowID 获取特定工作流的所有节点
-func (s *NodeService) GetNodesByWorkflowID(workflowID uint) ([]engine.Node, error) {
-	var nodes []engine.Node
+func (s *NodeService) GetNodesByWorkflowID(workflowID uint) ([]engine_nodes.Node, error) {
+	var nodes []engine_nodes.Node
 	if err := s.DB.Where("workflow_id = ?", workflowID).Preload("NodeType").Find(&nodes).Error; err != nil {
 		return nil, err
 	}
@@ -95,8 +96,8 @@ func (s *NodeService) GetNodesByWorkflowID(workflowID uint) ([]engine.Node, erro
 }
 
 // GetNodeTypeByCode 通过代码获取节点类型
-func (s *NodeService) GetNodeTypeByCode(code string) (*engine.NodeType, error) {
-	var nodeType engine.NodeType
+func (s *NodeService) GetNodeTypeByCode(code string) (*engine_nodes.NodeType, error) {
+	var nodeType engine_nodes.NodeType
 	if err := s.DB.Where("code = ?", code).First(&nodeType).Error; err != nil {
 		if gorm.IsRecordNotFoundError(err) {
 			return nil, errors.New("节点类型不存在")
@@ -107,8 +108,8 @@ func (s *NodeService) GetNodeTypeByCode(code string) (*engine.NodeType, error) {
 }
 
 // GetAllNodeTypes 获取所有节点类型
-func (s *NodeService) GetAllNodeTypes() ([]engine.NodeType, error) {
-	var nodeTypes []engine.NodeType
+func (s *NodeService) GetAllNodeTypes() ([]engine_nodes.NodeType, error) {
+	var nodeTypes []engine_nodes.NodeType
 	if err := s.DB.Find(&nodeTypes).Error; err != nil {
 		return nil, err
 	}
