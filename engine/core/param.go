@@ -23,6 +23,7 @@ type ParamDefination struct {
 	Datatype    ParamDataType `json:"type"`
 	Description string        `json:"desc"`
 	Default     interface{}   `json:"default"`
+	Options     []interface{} `json:"options,omitempty"`
 }
 
 func NewParamDefination(field string, datatype ParamDataType, description string) *ParamDefination {
@@ -117,8 +118,10 @@ func NewParamBoolean(field, description string, defaultValue bool) *ParamDefinat
 func NewParamArray(field, description string, defaultValue []interface{}) *ParamDefination {
 	return NewParamDefinationWithDefault(field, DataTypeArray, description, defaultValue)
 }
-func NewParamOptions(field, description string, defaultValue []interface{}) *ParamDefination {
-	return NewParamDefinationWithDefault(field, DataTypeOptions, description, defaultValue)
+func NewParamOptions(field, description string, defaultValue interface{}, options []interface{}) *ParamDefination {
+	param := NewParamDefinationWithDefault(field, DataTypeOptions, description, defaultValue)
+	param.Options = options
+	return param
 }
 func NewParamObject(field, description string, defaultValue map[string]interface{}) *ParamDefination {
 	return NewParamDefinationWithDefault(field, DataTypeObject, description, defaultValue)

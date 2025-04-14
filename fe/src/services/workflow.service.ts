@@ -34,22 +34,15 @@ export const workflowService = {
   },
   
   // 获取单个工作流详情
-  getWorkflow: async (id: string) => {
+  getWorkflow: async (id: number) => {
     const response = await axios.get(`/api/workflows/${id}`);
     return response.data;
   },
   
-  // 保存工作流
+  // 保存/更新工作流
   saveWorkflow: async (data: any) => {
-    if (data.id) {
-      // 更新现有工作流
-      const response = await axios.put(`/api/workflows/${data.id}`, data);
-      return response.data;
-    } else {
-      // 创建新工作流
-      const response = await axios.post('/api/workflows', data);
-      return response.data;
-    }
+    const response = await axios.post('/api/workflows/save', data);
+    return response.data;
   },
   
   // 删除工作流
@@ -65,7 +58,7 @@ export const workflowService = {
   },
 
   // 获取工作流执行历史记录
-  getWorkflowExecutionHistory: async (workflowId: string, params: any = {}): Promise<any> => {
+  getWorkflowExecutionHistory: async (workflowId: number, params: any = {}): Promise<any> => {
     try {
       const response = await axios.get(`/api/workflows/execute/${workflowId}/history`, { params });
       return response.data;

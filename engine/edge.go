@@ -7,7 +7,7 @@ import (
 )
 
 type Edge struct {
-	core.BasicModel
+	core.BasicModelWithUUID
 	SourceNodeKey string     `json:"sourceNodeKey"`
 	TargetNodeKey string     `json:"targetNodeKey"`
 	Config        ItemConfig `gorm:"type:json" json:"config"`

@@ -4,7 +4,7 @@
       <h1>Geminate</h1>
       <nav class="nav-links">
         <router-link to="/workflows">工作流列表</router-link>
-        <router-link to="/workflow/create">创建工作流</router-link>
+        <!-- <router-link to="/workflow/create">创建工作流</router-link> -->
       </nav>
     </header>
     <main class="app-main">
@@ -71,6 +71,5 @@ body {
   overflow: hidden;
   background-color: #f0f2f5;
   overflow-y: auto;
-  padding-bottom: 200px;
 }
 </style>

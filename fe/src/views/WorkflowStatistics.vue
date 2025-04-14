@@ -143,7 +143,7 @@ import { serverUrl } from '../env';
 
 const route = useRoute();
 const router = useRouter();
-const workflowId = computed(() => route.params.id as string);
+const workflowId = computed(() => Number(route.params.id));
 const workflowName = ref('');
 const workflowStatus = ref('published');
 const isLoading = ref(true);
@@ -151,7 +151,7 @@ const error = ref<string | null>(null);
 
 // 构建curl命令
 const baseUrl = serverUrl;
-const curlCommand = computed(() => `curl -X POST "${baseUrl}/api/workflows/${workflowId.value}/invoke" \\
+const curlCommand = computed(() => `curl -X POST "${baseUrl}/api/workflows/execute" \\
   -H "Content-Type: application/json" \\
   -d '{
     "workflowId": ${workflowId.value},
@@ -300,7 +300,6 @@ onMounted(() => {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 20px 20px;
-  height: calc(100vh - 60px); /* 留出顶部导航栏的空间 */
 }
 
 .back-button {
@@ -327,7 +326,6 @@ onMounted(() => {
   flex-direction: column;
   gap: 30px;
   overflow: visible;
-  margin-bottom: 200px;
 }
 
 /* 确保表格内容在需要时可滚动 */

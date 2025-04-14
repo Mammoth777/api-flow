@@ -20,12 +20,13 @@ import { Graph } from '@antv/x6';
 import { Dnd } from '@antv/x6-plugin-dnd';
 import { nodeTypeService } from '../services/node-type.service';
 import type { NodeType } from '../services/node-type.service';
+import { getNodeCategory, getNodeColor } from './workflow'
 
 // 接收的属性
 const props = defineProps({
   graph: {
     type: Object as () => Graph | null,
-    required: true
+    required: true,
   }
 });
 
@@ -39,8 +40,7 @@ const stencilContainer = ref<HTMLElement | null>(null);
 let dnd: Dnd | null = null;
 
 // 节点唯一标识计数器
-let nodeKeyCounter = 1;
-const generateNodeKey = () => `n${nodeKeyCounter++}`;
+const generateNodeKey = () => `node-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
 
 // 获取节点类型
 const fetchNodeTypes = async () => {
@@ -49,25 +49,10 @@ const fetchNodeTypes = async () => {
 
   try {
     const result = await nodeTypeService.getNodeTypes();
-    console.log('API返回结果:', result);
 
     // 根据API返回的结构获取数据
-    nodeTypes.value = result as any as NodeType[] || [];
-    console.log('节点类型加载成功:', nodeTypes.value);
-
-    // 为节点类型添加客户端属性
-    if (Array.isArray(nodeTypes.value)) {
-      nodeTypes.value = nodeTypes.value.map(nodeType => ({
-        ...nodeType,
-        // 根据节点类型代码分配颜色和类别
-        color: getNodeColor(nodeType.code),
-        category: getNodeCategory(nodeType.code)
-      }));
-    } else {
-      console.error('API返回的节点类型不是数组:', nodeTypes.value);
-      nodeTypes.value = [];
-    }
-
+    nodeTypes.value = result;
+    
     // 向父组件emit节点类型
     emit('nodeTypesLoaded', nodeTypes.value);
 
@@ -96,69 +81,6 @@ watch(() => props.graph, (newGraph) => {
   }
 });
 
-// 根据节点代码获取颜色
-const getNodeColor = (code: string): string => {
-  // 扩展颜色映射表，使用更加丰富的颜色
-  const colorMap: Record<string, string> = {
-    'api': '#91d5ff',      // 蓝色
-    'text': '#b7eb8f',     // 绿色
-    'start': '#87e8de',    // 青色
-    'end': '#ffadd2',      // 粉色
-    'condition': '#d3adf7', // 紫色
-    'loop': '#ffd591',     // 橙色
-    'timer': '#ffe58f',    // 黄色
-    'data': '#87e8de',     // 青色
-    'function': '#adc6ff', // 蓝紫色
-    'notification': '#ffadd2', // 粉色
-    'log': '#b5f5ec',      // 浅绿色
-    'error': '#ffa39e',    // 红色
-    'success': '#b7eb8f',  // 绿色
-    'wait': '#91caff',     // 蓝色
-    'request': '#95de64',  // 黄绿色
-    'response': '#ff9c6e', // 橘色
-    'transform': '#9254de', // 紫色
-    'process': '#36cfc9',  // 青绿色
-    'decision': '#ff7a45', // 橙红色
-  };
-
-  return colorMap[code.toLowerCase()] || '#f0f2f5'; // 默认浅灰色
-};
-
-// 获取配套的图标名称
-const getNodeIcon = (code: string): string => {
-  const iconMap: Record<string, string> = {
-    'api': 'api',
-    'text': 'file-text',
-    'start': 'play-circle',
-    'end': 'poweroff',
-    'condition': 'fork',
-    'loop': 'sync',
-    'timer': 'clock-circle',
-    'data': 'database',
-    'function': 'code',
-    'notification': 'bell',
-    'log': 'file',
-    'error': 'warning',
-    'success': 'check-circle',
-    'wait': 'hourglass',
-  };
-
-  return iconMap[code.toLowerCase()] || 'appstore';
-};
-
-// 根据节点代码获取类别
-const getNodeCategory = (code: string): string => {
-  const categoryMap: Record<string, string> = {
-    'api': '常用节点',
-    'text': '常用节点',
-    'start': '基本节点',
-    'end': '基本节点',
-    'condition': '高级节点',
-  };
-
-  return categoryMap[code] || '其他节点';
-};
-
 // 初始化 Stencil 面板
 const initStencil = () => {
   if (!props.graph || !stencilContainer.value) {
@@ -171,6 +93,8 @@ const initStencil = () => {
     dnd = new Dnd({
       target: props.graph,
       scaled: false,
+      getDragNode: (node) => node.clone({ keepId: true }),
+      getDropNode: (node) => node.clone({ keepId: true }),
     });
 
     // 清空现有的 stencil 内容
@@ -184,80 +108,14 @@ const initStencil = () => {
     // 按分类整理节点类型
     const nodeTypesByCategory: Record<string, NodeType[]> = {};
 
-    // 如果没有从 API 获取到节点类型，使用默认节点
-    if (nodeTypes.value.length === 0) {
-      // 默认节点类型
-      const defaultNodeTypes: NodeType[] = [
-        {
-          id: 1,
-          createAt: '',
-          updateAt: '',
-          deleteAt: null,
-          code: 'api',
-          name: 'API节点',
-          description: '发送HTTP请求并处理响应的节点',
-          category: '常用节点',
-        },
-        {
-          id: 2,
-          createAt: '',
-          updateAt: '',
-          deleteAt: null,
-          code: 'text',
-          name: '文本节点',
-          description: '直接返回配置的文本内容的节点',
-          category: '常用节点'
-        },
-        {
-          id: 3,
-          createAt: '',
-          updateAt: '',
-          deleteAt: null,
-          code: 'start',
-          name: '开始节点',
-          description: '流程的开始点',
-          category: '基本节点'
-        },
-        {
-          id: 4,
-          createAt: '',
-          updateAt: '',
-          deleteAt: null,
-          code: 'end',
-          name: '结束节点',
-          description: '流程的结束点',
-          category: '基本节点'
-        },
-        {
-          id: 5,
-          createAt: '',
-          updateAt: '',
-          deleteAt: null,
-          code: 'condition',
-          name: '条件节点',
-          description: '根据条件选择不同分支',
-          category: '高级节点'
-        }
-      ];
-
-      // 按分类整理
-      defaultNodeTypes.forEach(nodeType => {
-        const category = nodeType.category || '其他节点';
-        if (!nodeTypesByCategory[category]) {
-          nodeTypesByCategory[category] = [];
-        }
-        nodeTypesByCategory[category].push(nodeType);
-      });
-    } else {
-      // 使用从 API 获取的节点类型
-      nodeTypes.value.forEach(nodeType => {
-        const category = nodeType.category || '其他节点';
-        if (!nodeTypesByCategory[category]) {
-          nodeTypesByCategory[category] = [];
-        }
-        nodeTypesByCategory[category].push(nodeType);
-      });
-    }
+    // 使用从 API 获取的节点类型
+    nodeTypes.value.forEach(nodeType => {
+      const category = nodeType.ui.category || '其他节点';
+      if (!nodeTypesByCategory[category]) {
+        nodeTypesByCategory[category] = [];
+      }
+      nodeTypesByCategory[category].push(nodeType);
+    });
 
     // 创建分类和节点
     Object.entries(nodeTypesByCategory).forEach(([category, types]) => {
@@ -277,7 +135,7 @@ const initStencil = () => {
     if (stencilContainer.value) {
       const nodeEls = stencilContainer.value.querySelectorAll('.stencil-node');
       nodeEls.forEach((nodeEl) => {
-        const code = nodeEl.getAttribute('data-type') || 'task-node';
+        const code = nodeEl.getAttribute('data-type') || 'task';
         const text = nodeEl.getAttribute('data-text') || '节点';
         const color = nodeEl.getAttribute('data-color');
 
@@ -297,20 +155,27 @@ const initStencil = () => {
           }
 
           const nodeKey = generateNodeKey();
-          
+
+          const category = getNodeCategory(code)
           const node = props.graph.createNode({
-            shape: 'task-node', // 使用通用节点形状
+            id: nodeKey, // 似乎没用呢？
+            shape: category, // 使用通用节点形状
             attrs: nodeAttrs,
-            // 存储节点类型信息以便后续使用
             data: {
+              id: nodeKey,
               nodeType: code,
               nodeKey: nodeKey,
               name: text,
               description: '',
               config: {},
-              status: 'ready'
+              status: 'ready',
+              ui: {
+                category,
+                color: color,
+              },
             }
           });
+          console.log('create node', node)
 
           dnd.start(node, e as any);
         });

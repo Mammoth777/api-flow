@@ -108,10 +108,11 @@ onMounted(() => {
 
 <style scoped>
 .highlight-code-container {
+  max-height: calc(100vh - 250px);
   position: relative;
   margin: 1rem 0;
   border-radius: 6px;
-  overflow: hidden;
+  overflow-y: auto;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   background-color: #f6f8fa;
   text-align: left;

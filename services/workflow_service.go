@@ -24,7 +24,7 @@ type Statistics struct {
 // WorkflowService 流程服务
 type WorkflowService struct {
 	DB                   *gorm.DB
-NodeExecutionService *NodeExecutionService
+	NodeExecutionService *NodeExecutionService
 }
 
 // NewWorkflowService 创建流程服务实例
@@ -63,7 +63,7 @@ func (s *WorkflowService) GetAllWorkflows(page, size int) ([]engine.Workflow, in
 	s.DB.Model(&engine.Workflow{}).Where("deleted_at IS NULL").Count(&count)
 
 	// 分页查询，只查询未删除的记录
-	query := s.DB.Where("deleted_at IS NULL")
+	query := s.DB.Where("deleted_at IS NULL").Order("updated_at DESC")
 	if err := query.Offset((page - 1) * size).Limit(size).Find(&workflows).Error; err != nil {
 		return nil, 0, err
 	}
@@ -102,30 +102,21 @@ func (s *WorkflowService) UpdateWorkflow(id uint, workflow *dto.WorkflowDTO) err
 
 	// 更新节点
 	for _, node := range workflow.Nodes {
-		updateNodes := tx.Model(&node).Where("id = ?", node.ID).Update(map[string]interface{}{
-			"nodeKey":     node.NodeKey,
-			"nodeType":    node.NodeType,
-			"name":        node.Name,
-			"description": node.Description,
-			"config":      node.Config,
-			"status":      node.Status,
-		})
-		if updateNodes.Error != nil {
+		node.WorkflowID = existingWorkflow.ID
+		err := tx.Model(&node).Save(&node).Error
+		if err != nil {
 			tx.Rollback()
-			return updateNodes.Error
+			return err
 		}
 	}
 
 	// 更新连线
 	for _, edge := range workflow.Edges {
-		updateEdges := tx.Model(&edge).Where("id = ?", edge.ID).Update(map[string]interface{}{
-			"sourceNodeKey": edge.SourceNodeKey,
-			"targetNodeKey": edge.TargetNodeKey,
-			"workflowID":    edge.WorkflowID,
-		})
-		if updateEdges.Error != nil {
+		edge.WorkflowID = existingWorkflow.ID
+		err := tx.Model(&edge).Save(&edge).Error
+		if err != nil {
 			tx.Rollback()
-			return updateEdges.Error
+			return err
 		}
 	}
 	// 提交事务
@@ -306,6 +297,11 @@ func (s *WorkflowService) GetWorkflowWithNodes(workflowID uint) (*dto.WorkflowDT
 		return nil, err
 	}
 
+	var edges []engine.Edge
+	if err = s.DB.Where("workflow_id = ?", workflowID).Find(&edges).Error; err != nil {
+		return nil, err
+	}
+
 	// 构建响应
 	response := &dto.WorkflowDTO{
 		ID:          workflow.ID,
@@ -314,6 +310,7 @@ func (s *WorkflowService) GetWorkflowWithNodes(workflowID uint) (*dto.WorkflowDT
 		CreatedAt:   workflow.CreatedAt.Format("2006-01-02 15:04:05"),
 		UpdatedAt:   workflow.UpdatedAt.Format("2006-01-02 15:04:05"),
 		Nodes:       nodes,
+		Edges:       edges,
 		Status:      workflow.Status,
 	}
 
@@ -450,7 +447,7 @@ nodeloop:
 			results = append(results, core.ExecuteResult{
 				NodeID:  node.ID,
 				NodeKey: node.NodeKey,
-				Status: result.Status,
+				Status:  result.Status,
 				Data:    result.Data,
 				Error:   result.Error,
 			})

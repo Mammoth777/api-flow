@@ -1,3 +1,9 @@
+/* reset */
+input, textarea, select, button {
+  box-sizing: border-box;
+}
+/* reset end */
+
 a {
   font-weight: 500;
   color: #646cff;

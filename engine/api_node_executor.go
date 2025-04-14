@@ -18,7 +18,7 @@ var apiNodeOutputFormat = core.ParamFormat{
 }
 var apiNodeInputFormat = core.ParamFormat{
 	core.NewParamString("url", "API 请求URL", ""),
-	core.NewParamOptions("method", "API 请求方法", []interface{}{"GET", "POST", "PUT", "DELETE", "PATCH"}),
+	core.NewParamOptions("method", "API 请求方法", "GET", []interface{}{"GET", "POST", "PUT", "DELETE", "PATCH"}),
 	core.NewParamObject("headers", "请求头", map[string]interface{}{}),
 	core.NewParamString("body", "请求体", ""),
 	core.NewParamObject("params", "请求参数", map[string]interface{}{}),

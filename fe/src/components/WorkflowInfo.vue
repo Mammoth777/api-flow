@@ -101,6 +101,7 @@ const emitUpdate = () => {
 
 .workflow-title-section {
   flex: 1;
+  padding-right: 20px;
 }
 
 .workflow-name-input {

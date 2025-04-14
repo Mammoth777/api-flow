@@ -1,3 +1,4 @@
+import { getNodeCategory, getNodeColor } from '../components/workflow';
 import apiClient from './api-client';
 
 type ParamDefine = {
@@ -16,7 +17,10 @@ export interface NodeType {
   code: string;
   name: string;
   description: string;
-  category: string;
+  ui: {
+    color: string;
+    category: string;
+  },
   input: ParamDefine[]
   output: ParamDefine[]
 }
@@ -24,7 +28,21 @@ export interface NodeType {
 // 节点类型服务
 export const nodeTypeService = {
   // 获取所有节点类型
-  getNodeTypes() {
-    return apiClient.get<NodeType[]>('/node-types');
+  async getNodeTypes() {
+    const res = await apiClient.get<NodeType[]>('/node-types');
+    // 为节点类型添加客户端属性
+    if (Array.isArray(res)) {
+      return res.map(nodeType => ({
+        ...nodeType,
+        ui: {
+          // 根据节点类型代码分配颜色和类别
+          color: getNodeColor(nodeType.code),
+          category: getNodeCategory(nodeType.code)
+        }
+      } as NodeType));
+    } else {
+      console.error('API返回的节点类型不是数组:', res);
+      return [];
+    }
   }
 };
