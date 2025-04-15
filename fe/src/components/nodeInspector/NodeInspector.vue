@@ -81,7 +81,7 @@ const props = defineProps({
   },
   // 增加新的props来控制初始展开模式
   inspectorMode: {
-    type: String,
+    type: String as () => 'compact' | 'full' | null,
     default: 'compact' // 'compact' 或 'full'
   },
   // 画布相对屏幕左上角偏移量

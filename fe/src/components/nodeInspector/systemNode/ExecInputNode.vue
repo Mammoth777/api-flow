@@ -103,13 +103,12 @@ function handleTypeChange(param: any) {
             <template v-else-if="param.type === 'string' || param.type === 'array'">
               <textarea
                 v-model="param.defaultValue"
-                placeholder="默认值"
                 rows="3"
                 style="width: 100%; resize: vertical;"
               ></textarea>
             </template>
             <template v-else>
-              <input v-model="param.defaultValue" placeholder="默认值" />
+              <input v-model="param.defaultValue" />
             </template>
           </td>
           <td style="text-align: center">

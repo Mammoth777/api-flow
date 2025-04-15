@@ -69,11 +69,7 @@ const selectedNode = ref<any>(null);
 // 选中的边
 const selectedEdge = ref<any>(null);
 // 节点检查器显示模式
-const inspectorMode = ref<'compact' | 'full'>('compact');
-// 单击计时器，用于区分单击和双击
-const clickTimer = ref<number | null>(null);
-// 单击延迟时间（毫秒）
-const clickDelay = 300;
+const inspectorMode = ref<'compact' | 'full' | null>('compact');
 
 function updateInspectorMode(mode: 'compact' | 'full') {
   inspectorMode.value = mode;
@@ -281,6 +277,10 @@ const handleKeyDown = (e: KeyboardEvent) => {
   }
 };
 
+const resetInspectorMode = () => {
+  inspectorMode.value = null;
+}
+
 // 添加事件监听
 const setupGraphEvents = () => {
   if (!graph) return;
@@ -302,23 +302,10 @@ const setupGraphEvents = () => {
     // 给选中的节点添加高亮效果
     node.attr('body/strokeWidth', 2);
     node.attr('body/stroke', '#ff7f0e'); // 橙色边框
-    
-    // 使用定时器区分单击和双击
-    if (clickTimer.value !== null) {
-      // 这是双击事件，清除定时器
-      clearTimeout(clickTimer.value);
-      clickTimer.value = null;
-      
-      // 双击时显示完整详情模式
-      inspectorMode.value = 'full';
-      console.log('节点双击: 显示完整详情');
+    if (inspectorMode.value === 'full') {
+      return
     } else {
-      // 这是单击事件，设置定时器
-      clickTimer.value = setTimeout(() => {
-        // 单击时显示紧凑模式
-        inspectorMode.value = 'compact';
-        clickTimer.value = null;
-      }, clickDelay) as unknown as number;
+      inspectorMode.value = 'compact';
     }
   });
 
@@ -340,6 +327,7 @@ const setupGraphEvents = () => {
     edge.attr('line/stroke', '#FF3366'); // 红色
     edge.attr('line/strokeWidth', 3);
 
+    resetInspectorMode()
     console.log('边被选中:', edge.id);
   });
 
@@ -347,6 +335,7 @@ const setupGraphEvents = () => {
   graph.on('blank:click', () => {
     clearSelectedNode();
     clearSelectedEdge();
+    resetInspectorMode()
   });
 
   // 控制连接桩显示/隐藏
