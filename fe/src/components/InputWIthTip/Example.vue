@@ -7,6 +7,20 @@ import InputWithTip from './InputWithTip.vue';
 // 示例输入值
 const inputValue = ref('');
 
+const TipContent = {
+  fullname: {
+    firstName: 'string',
+    lastName: 'string'
+  },
+  age: 'number',
+  address: {
+    city: 'string',
+    state: 'string'
+  },
+  hobbies: 'array',
+  isStudent: 'boolean',
+}
+
 // 示例提示数据
 const suggestions = ref([
   'user',
@@ -72,6 +86,7 @@ const suggestions = ref([
     <div class="available-suggestions">
       <h3>可用的提示:</h3>
       <pre>{{ JSON.stringify(suggestions, null, 2) }}</pre>
+      <pre>{{ JSON.stringify(TipContent, null, 2) }}</pre>
     </div>
   </div>
 </template>
