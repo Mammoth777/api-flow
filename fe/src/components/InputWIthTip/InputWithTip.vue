@@ -1,99 +1,12 @@
 <script setup lang="ts">
-import { inline, useFloating } from '@floating-ui/vue';
 import { ref, onMounted } from 'vue';
 import { get } from 'lodash-es'
+import { CursorPop } from './CursorPop'
 
 // console.log('get', get({ a: { b: { c: 1 } } }, 'a.b.c', 0)) // 1
 
-const reference = ref(null);
 const floating = ref<HTMLDivElement | null>(null);
 const inputarea = ref<HTMLDivElement | null>(null);
-const { floatingStyles } = useFloating(reference, floating, {
-  middleware: [inline()]
-});
-
-const dropdownList = ref([])
-
-const floatTipStyle = ref({
-  // position: 'absolute',
-  top: '0px',
-  left: '0px',
-  display: 'none'
-  // background: '#222',
-  // color: 'white',
-  // fontWeight: 'bold',
-  // padding: '5px',
-  // borderRadius: '4px',
-  // fontSize: '90%',
-})
-
-let inputareaSelection: Selection | null = null;
-let inputareaRange: Range | null = null;
-
-
-function getCaretPosition(editableDiv: HTMLDivElement): number {
-    let caretOffset = 0;
-    const selection = window.getSelection();
-    if (!selection) {
-      console.error("Cannot get selection");
-      return 0;
-    }
-    if (selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        const preCaretRange = range.cloneRange();
-        preCaretRange.selectNodeContents(editableDiv);
-        preCaretRange.setEnd(range.startContainer, range.startOffset);
-        caretOffset = preCaretRange.toString().length;
-
-        inputareaSelection = selection;
-        inputareaRange = range;
-    }
-    return caretOffset;
-}
-
-function getCaretPositionRelativeToElement(container: HTMLElement): { x: number; y: number } {
-    const selection = inputareaSelection
-    if (!selection?.rangeCount) {
-        console.error("No selection found");
-        return { x: 0, y: 0 };
-    }
-
-    const range = selection.getRangeAt(0).cloneRange();
-    const caretRect = range.getBoundingClientRect(); // 光标矩形位置
-    const containerRect = container.getBoundingClientRect(); // 容器矩形位置
-
-    // 计算光标相对容器的偏移
-    const offsetX = caretRect.left - containerRect.left;
-    const offsetY = caretRect.top - containerRect.top;
-
-    return { x: offsetX, y: offsetY };
-}
-
-function insertTextAtCursor(text: string) {
-    const selection = inputareaSelection;
-    const range = inputareaRange
-    if (!selection) {
-        console.error("No selection found");
-        return;
-    }
-    if (!range) {
-        console.error("No range found");
-        return;
-    }
-    range.deleteContents(); // 可选，用于替换光标位置的内容
-
-    // 创建一个文本节点
-    const textNode = document.createTextNode(text);
-
-    // 在光标位置插入内容
-    range.insertNode(textNode);
-
-    // 调整光标位置到文本节点之后
-    range.setStartAfter(textNode);
-    range.setEndAfter(textNode);
-    selection.removeAllRanges();
-    selection.addRange(range);
-}
 
 const TipContent = {
   fullname: {
@@ -109,32 +22,55 @@ const TipContent = {
   isStudent: 'boolean',
 }
 
-function getDropdownContent(expression: string) {
+const dropdownList = ref<[string, string][]>([])
+
+dropdownList.value = getDropdownContent('')
+
+function getDropdownContent(expression: string): Array<[string, string]> {
   console.log(expression, 'expression')
-  const exp = expression.replace(/^\$/, '')
-  const value = get(TipContent, exp, null)
-  console.log(value, 'value')
-  
-  console.log(value, 'dropdown')
-  return value
-}
-
-function getTextBeforeCursor(editableDiv: HTMLDivElement): string {
-    const selection = window.getSelection();
-    if (!selection) {
-      console.error("No selection found");
-      return ""
-    };
-    if (!selection.rangeCount) {
-      console.error("No range found");
-      return ""
+  const exp = expression.replace(/^\$/, '').replace(/\.$/, '')
+  const expList = exp.split('.').filter(Boolean)
+  const lastProperty = expList[expList.length - 1]
+  const value = get(TipContent, exp)
+  const containsInCurrentDropdown = (t: string) => {
+    const hit = dropdownList.value.some(item => item[0].includes(t))
+    return hit
+  }
+  if (expression === '$') {
+    // 1. 返回顶层
+    return Object.entries(TipContent).map(item => {
+      const key = item[0]
+      const value = item[1]
+      if (typeof value === 'object') {
+        return [key, 'object']
+      } else {
+        return [key, value]
+      }
+    })
+  } else if (expression.endsWith('.')) {
+    // 3. 以.结尾
+    const value = get(TipContent, exp)
+    if (typeof value === 'object') {
+      return Object.entries(value)
+    } else {
+      return []
     }
-
-    const range = selection.getRangeAt(0).cloneRange(); // 克隆当前 Range
-    range.selectNodeContents(editableDiv); // 将范围设置为整个内容区域
-    range.setEnd(selection.anchorNode!, selection.anchorOffset); // 将结束点设置为光标位置
-
-    return range.toString(); // 获取光标之前的文本
+  } else if (expList.length > 0 && containsInCurrentDropdown(lastProperty)) {
+    // 2. 最后一个属性已经在下拉列表中
+    return dropdownList.value
+  } else if (typeof value === 'string') {
+    // 4. 值是字符串
+    return []
+  } else if (typeof value === 'object') {
+    // 3. 值是对象
+    return Object.entries(value)
+  } else {
+    // 5. 值是已知的类型字符串
+    // 6. 其他
+    // throw new Error('Invalid expression')
+    console.warn('Invalid expression', expression)
+    return []
+  }
 }
 
 function calcTagContent(text: string) {
@@ -143,45 +79,45 @@ function calcTagContent(text: string) {
   return tagContent
 }
 
-onMounted(() => {
-  const updatePosition = () => {
-    const { x, y } = getCaretPositionRelativeToElement(inputarea.value!)
-    floatTipStyle.value!.left = `${x + 3}px`;
-    floatTipStyle.value!.top = `${y}px`;
-    console.log("光标相对位置:", x, y);
-  }
+let popper!: CursorPop
 
+onMounted(() => {
   const inputElm = inputarea.value!;
+  const floatElm = floating.value!;
+  popper = new CursorPop(inputElm, floatElm)
   inputElm.addEventListener('keyup', () => {
-    console.log("光标位置:", getCaretPosition(inputElm));
+    console.log("光标位置:", popper.getCaretPosition());
   });
   inputElm.addEventListener('input', (e: Event) => {
     const inputEvt = e as InputEvent;
+    const beforeText = popper.getTextBeforeCursor();
+    const tagContent = calcTagContent(beforeText)
+    console.log(beforeText, tagContent);
+    const dropdownContent = getDropdownContent(tagContent)
+    console.log('dropdownContent', dropdownContent);
     if (inputEvt.data === '$') {
-      const beforeText = getTextBeforeCursor(inputElm);
-      const tagContent = calcTagContent(beforeText)
-      console.log(beforeText, tagContent);
-      const dropdownContent = getDropdownContent(tagContent)
-      console.log('dropdownContent', dropdownContent);
-      updatePosition();
-      floatTipStyle.value!.display = 'block'
+      dropdownList.value = dropdownContent
+      setTimeout(() => {
+        popper.show()
+      }, 200)
     } else if (inputEvt.data === '.') {
-      const beforeText = getTextBeforeCursor(inputElm);
-      const tagContent = calcTagContent(beforeText)
-      console.log(beforeText, tagContent);
-      const dropdownContent = getDropdownContent(tagContent)
-      console.log('dropdownContent', dropdownContent);
-      updatePosition();
-      floatTipStyle.value!.display = 'block'
+      dropdownList.value = dropdownContent
+      popper.show()
     } else {
-      floatTipStyle.value!.display = 'none'
+      dropdownList.value = dropdownContent
+      if (dropdownContent.length === 0) {
+        popper.hide()
+      } else {
+        popper.show()
+      }
     }
+    popper.updatePosition();
   });
 
   const tipElm = floating.value!;
   tipElm.addEventListener('click', () => {
     setTimeout(() => {
-      floatTipStyle.value!.display = 'none'
+      popper.hide()
     }, 0)
   });
 })
@@ -190,9 +126,10 @@ onMounted(() => {
 <template>
   <div class="input-width-tip-wrapper">
     <div contenteditable="true" class="input-with-tip" ref="inputarea"></div>
-    <div ref="reference" class="cursor">c</div>
-    <div ref="floating" :style="floatTipStyle" class="floating-tip">
-      <span @click="insertTextAtCursor('hello')">hello</span>
+    <div ref="floating" class="floating-tip">
+      <span @click="popper.insertTextAtCursor(item[0])" v-for="item in dropdownList">
+        {{ item[0] }}: {{ item[1] }}
+      </span>
     </div>
   </div>
 </template>
