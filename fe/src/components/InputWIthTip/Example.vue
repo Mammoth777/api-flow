@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import InputWithPrevNode from './InputWithPrevNode.vue';
-import TagDisplay from './TagDisplay.vue';
+// import InputWithPrevNode from './InputWithPrevNode.vue';
+// import TagDisplay from './TagDisplay.vue';
+import InputWithTip from './InputWithTip.vue';
 
 // 示例输入值
 const inputValue = ref('');
@@ -32,10 +33,10 @@ const suggestions = ref([
 ]);
 
 // 处理输入变化
-const handleInput = (value: string) => {
-  console.log('输入值变化:', value);
-  inputValue.value = value;
-};
+// const handleInput = (value: string) => {
+//   console.log('输入值变化:', value);
+//   inputValue.value = value;
+// };
 </script>
 
 <template>
@@ -51,12 +52,7 @@ const handleInput = (value: string) => {
     
     <div class="input-wrapper">
       <label>带标签的输入框 (所见即所得):</label>
-      <InputWithPrevNode
-        v-model="inputValue"
-        :suggestions="suggestions"
-        placeholder="请输入内容，使用$触发提示选择标签"
-        @update:modelValue="handleInput"
-      />
+      <InputWithTip></InputWithTip>
     </div>
     
     <div class="current-value">
