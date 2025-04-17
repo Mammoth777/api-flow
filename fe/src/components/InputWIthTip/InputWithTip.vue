@@ -26,19 +26,31 @@ const dropdownList = ref<[string, string][]>([])
 
 dropdownList.value = getDropdownContent('')
 
+/**
+ * 一定会有 $ 符号开头
+ * 1. 根据 "." 进行分割，获取 "." 前面的所有所有属性连接后的值。 
+ * 1.1 如果"."后面有key， 则比对
+ * 2. 如果没有 ".", 则返回顶层
+ */
 function getDropdownContent(expression: string): Array<[string, string]> {
-  console.log(expression, 'expression')
-  const exp = expression.replace(/^\$/, '').replace(/\.$/, '')
-  const expList = exp.split('.').filter(Boolean)
-  const lastProperty = expList[expList.length - 1]
-  const value = get(TipContent, exp)
-  const containsInCurrentDropdown = (t: string) => {
-    const hit = dropdownList.value.some(item => item[0].includes(t))
-    return hit
+  if (!expression.startsWith('$')) {
+    return []
   }
-  if (expression === '$') {
-    // 1. 返回顶层
-    return Object.entries(TipContent).map(item => {
+  // console.log(expression, 'expression')
+  const exp = expression.replace(/^\$/, '')
+  const expList = exp.split('.')
+  // 已输入完成的 properties, 对应的真实值
+  const prevProps = expList.slice(0, expList.length - 1)
+  const prevPropsStr = prevProps.join('.')
+  const fullPropsValue = get(TipContent, exp)
+  const prevPropsValue = get(TipContent, prevPropsStr)
+  const value = fullPropsValue || prevPropsValue
+  // 正在输入中的 property
+  const lastProperty = expList[expList.length - 1]
+  console.log({ exp, prevProps, prevPropsStr, value, lastProperty })
+  let list: [string, string][] = []
+  const calcList = (obj: any) => {
+    list = Object.entries(obj).map(item => {
       const key = item[0]
       const value = item[1]
       if (typeof value === 'object') {
@@ -46,29 +58,20 @@ function getDropdownContent(expression: string): Array<[string, string]> {
       } else {
         return [key, value]
       }
-    })
-  } else if (expression.endsWith('.')) {
-    // 3. 以.结尾
-    const value = get(TipContent, exp)
-    if (typeof value === 'object') {
-      return Object.entries(value)
-    } else {
-      return []
+    }) as [string, string][]
+    if (!lastProperty) {
+      return list
     }
-  } else if (expList.length > 0 && containsInCurrentDropdown(lastProperty)) {
-    // 2. 最后一个属性已经在下拉列表中
-    return dropdownList.value
-  } else if (typeof value === 'string') {
-    // 4. 值是字符串
-    return []
+    return list.filter(item => {
+      return item[0].startsWith(lastProperty)
+    })
+  }
+  if (prevProps.length === 0) {
+    // 1. 返回顶层
+    return calcList(TipContent)
   } else if (typeof value === 'object') {
-    // 3. 值是对象
-    return Object.entries(value)
+    return calcList(value)
   } else {
-    // 5. 值是已知的类型字符串
-    // 6. 其他
-    // throw new Error('Invalid expression')
-    console.warn('Invalid expression', expression)
     return []
   }
 }
@@ -86,32 +89,39 @@ onMounted(() => {
   const floatElm = floating.value!;
   popper = new CursorPop(inputElm, floatElm)
   inputElm.addEventListener('keyup', () => {
-    console.log("光标位置:", popper.getCaretPosition());
+    // console.log("光标位置:", popper.getCaretPosition());
   });
   inputElm.addEventListener('input', (e: Event) => {
-    const inputEvt = e as InputEvent;
+    // 1. 生成dropdown
     const beforeText = popper.getTextBeforeCursor();
     const tagContent = calcTagContent(beforeText)
-    console.log(beforeText, tagContent);
     const dropdownContent = getDropdownContent(tagContent)
-    console.log('dropdownContent', dropdownContent);
-    if (inputEvt.data === '$') {
-      dropdownList.value = dropdownContent
+    dropdownList.value = dropdownContent
+    if (dropdownContent.length === 0) {
+      popper.hide()
+    } else {
       setTimeout(() => {
         popper.show()
-      }, 200)
-    } else if (inputEvt.data === '.') {
-      dropdownList.value = dropdownContent
-      popper.show()
-    } else {
-      dropdownList.value = dropdownContent
-      if (dropdownContent.length === 0) {
-        popper.hide()
-      } else {
-        popper.show()
-      }
+      }, 100)
     }
     popper.updatePosition();
+
+    // 2. 生成tag
+    const inputEvt = e as InputEvent
+    console.log(inputEvt.data, 'inputEvt')
+  });
+
+  inputElm.addEventListener('keyup', (e: KeyboardEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const keyCode = e.keyCode
+    if (keyCode === 13) {
+      // Enter
+      console.log('Enter pressed');
+    } else if (keyCode === 8) {
+      // Backspace
+      console.log('Backspace pressed');
+    }
   });
 
   const tipElm = floating.value!;
@@ -138,6 +148,7 @@ onMounted(() => {
 .input-width-tip-wrapper {
   position: relative;
 }
+
 .input-with-tip {
   border: 1px solid #ccc;
   padding: 10px;
@@ -147,10 +158,12 @@ onMounted(() => {
   outline: none;
   transition: border-color 0.3s;
 }
-.cursor{
+
+.cursor {
   display: inline;
   posation: absolute;
 }
+
 .floating-tip {
   /* width: max-content; */
   position: absolute;
@@ -171,5 +184,4 @@ onMounted(() => {
   border-radius: 4px;
   transition: background-color 0.3s;
 }
-
 </style>
