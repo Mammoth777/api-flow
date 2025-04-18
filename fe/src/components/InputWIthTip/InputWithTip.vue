@@ -165,12 +165,7 @@ onMounted(() => {
     const target = e.target as HTMLElement;
     
     // 如果点击了标签，浏览器会自动处理光标位置
-    if (target.classList.contains('tag-item')) {
-      // 不再需要特殊处理，让浏览器正常将光标定位在点击位置
-      // 这样用户可以在标签内任意位置点击并编辑内容
-    }
-    // 如果点击了输入框本身（不是标签内部）
-    else if (target === inputElm) {
+    if (target === inputElm) {
       // 找到点击位置最近的文本位置
       const selection = window.getSelection();
       if (selection) {
@@ -260,12 +255,12 @@ onMounted(() => {
     }
   });
 
-  const tipElm = floating.value!;
-  tipElm.addEventListener('click', () => {
-    setTimeout(() => {
-      popper.hide()
-    }, 0)
-  });
+  // const tipElm = floating.value!;
+  // tipElm.addEventListener('click', () => {
+  //   setTimeout(() => {
+  //     popper.hide()
+  //   }, 0)
+  // });
 })
 
 // 鼠标悬停在下拉选项上时高亮显示
