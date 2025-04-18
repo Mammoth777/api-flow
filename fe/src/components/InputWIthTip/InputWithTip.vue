@@ -1,25 +1,34 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, type PropType } from 'vue';
 import { get } from 'lodash-es'
 import { CursorPop } from './CursorPop'
-
 
 const floating = ref<HTMLDivElement | null>(null);
 const inputarea = ref<HTMLDivElement | null>(null);
 
-const TipContent = {
-  fullname: {
-    firstName: 'string',
-    lastName: 'string'
-  },
-  age: 'number',
-  address: {
-    city: 'string',
-    state: 'string'
-  },
-  hobbies: 'array',
-  isStudent: 'boolean',
+type ItemTypes = 'string' | 'number' | 'boolean' | 'object' | 'array'
+type ItemObjType = {
+  [key: string]: ItemTypes | ItemObjType
 }
+
+const props = defineProps({
+  suggestions: {
+    type: Object as PropType<ItemObjType>,
+    default: () => ({
+      fullname: {
+        firstName: 'string',
+        lastName: 'string'
+      },
+      age: 'number',
+      address: {
+        city: 'string',
+        state: 'string'
+      },
+      hobbies: 'array',
+      isStudent: 'boolean',
+    })
+  }
+})
 
 const dropdownList = ref<[string, string][]>([])
 
@@ -41,8 +50,8 @@ function getDropdownContent(expression: string): Array<[string, string]> {
   // 已输入完成的 properties, 对应的真实值
   const prevProps = expList.slice(0, expList.length - 1)
   const prevPropsStr = prevProps.join('.')
-  const fullPropsValue = get(TipContent, exp)
-  const prevPropsValue = get(TipContent, prevPropsStr)
+  const fullPropsValue = get(props.suggestions, exp)
+  const prevPropsValue = get(props.suggestions, prevPropsStr)
   const value = fullPropsValue || prevPropsValue
   // 正在输入中的 property
   const lastProperty = expList[expList.length - 1]
@@ -67,7 +76,7 @@ function getDropdownContent(expression: string): Array<[string, string]> {
   }
   if (prevProps.length === 0) {
     // 1. 返回顶层
-    return calcList(TipContent)
+    return calcList(props.suggestions)
   } else if (typeof value === 'object') {
     return calcList(value)
   } else {
@@ -82,22 +91,22 @@ function calcTagContent(text: string) {
     // 先检查这是普通文本还是已经在标签内
     // 获取从 $ 开始的部分
     let tagContent = text.substring(lastSign);
-    
+
     // 处理标签中的路径
     // 如果在文本中找到数据路径属性标签，则使用其data-path属性值
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = text;
     const tagItems = tempDiv.querySelectorAll('.tag-item');
-    
+
     // 如果有标签，可能需要获取最后一个标签的路径
     if (tagItems.length > 0) {
       const lastTag = tagItems[tagItems.length - 1];
       const path = lastTag.getAttribute('data-path');
-      
+
       // 检查标签后是否有点号
       const tagText = lastTag.textContent || '';
       const afterTagText = text.substring(text.indexOf(tagText) + tagText.length);
-      
+
       if (afterTagText.includes('.')) {
         // 如果标签后有点号，则使用完整路径
         tagContent = (path || '') + afterTagText;
@@ -106,7 +115,7 @@ function calcTagContent(text: string) {
         tagContent = path;
       }
     }
-    
+
     return tagContent;
   }
   return '';
@@ -119,20 +128,20 @@ onMounted(() => {
   const inputElm = inputarea.value!;
   const floatElm = floating.value!;
   popper = new CursorPop(inputElm, floatElm)
-  
+
   // 处理输入事件，显示提示
-  inputElm.addEventListener('input', (e: Event) => {
+  inputElm.addEventListener('input', () => {
     // 1. 生成dropdown
     const beforeText = popper.getTextBeforeCursor();
     const tagContent = calcTagContent(beforeText)
-    
+
     // 检查是否输入了点号，如果是则显示提示
     const lastChar = beforeText.charAt(beforeText.length - 1);
     if (lastChar === '.') {
       // 用户输入了点号，应该显示提示
       const dropdownContent = getDropdownContent(tagContent)
       dropdownList.value = dropdownContent
-      
+
       if (dropdownContent.length > 0) {
         setTimeout(() => {
           popper.show()
@@ -143,7 +152,7 @@ onMounted(() => {
       // 常规情况
       const dropdownContent = getDropdownContent(tagContent)
       dropdownList.value = dropdownContent
-      
+
       if (dropdownContent.length === 0) {
         popper.hide()
       } else {
@@ -166,7 +175,7 @@ onMounted(() => {
       e.preventDefault();
       e.stopPropagation();
     }
-    
+
     // 处理右箭头键，使光标能够从标签内移出
     if (moveOutOfTagKeys.includes(e.key)) {
       console.log('right arrow')
@@ -182,7 +191,7 @@ onMounted(() => {
           popper.hide();
           return;
         }
-        
+
         // 如果没有选中的项但有显示的选项，则选择第一个
         if (popper.getItemCount() > 0 && popper.getActiveItemIndex() === -1) {
           popper.highlightItem(0);
@@ -204,7 +213,7 @@ onMounted(() => {
         const beforeText = popper.getTextBeforeCursor();
         const tagContent = calcTagContent(beforeText);
         const dropdownContent = getDropdownContent(tagContent);
-        
+
         if (dropdownContent.length > 0) {
           dropdownList.value = dropdownContent;
           popper.show();
@@ -252,7 +261,7 @@ function handleItemClick(e: Event, item: [string, string]) {
   e.stopPropagation();
   // 使用requestAnimationFrame确保DOM更新后再插入文本
   popper.confirmSelectionWithValue(item[0]);
-  
+
   // 隐藏下拉菜单
   popper.hide();
 }
@@ -263,17 +272,10 @@ function handleItemClick(e: Event, item: [string, string]) {
   <div class="input-width-tip-wrapper">
     <div contenteditable="true" class="input-with-tip" ref="inputarea"></div>
     <div ref="floating" class="floating-tip">
-      <span 
-        v-for="(item, index) in dropdownList" 
-        :key="index"
-        @click="e => handleItemClick(e, item)"
-        @mouseover="highlightItem(index)"
-        class="dropdown-item"
-        role="option"
-        :aria-selected="false"
-        :data-key="item[0]"
-      >
-        <span class="item-key">{{ item[0] }}</span> 
+      <span v-for="(item, index) in dropdownList" :key="index" @click="e => handleItemClick(e, item)"
+        @mouseover="highlightItem(index)" class="dropdown-item" role="option" :aria-selected="false"
+        :data-key="item[0]">
+        <span class="item-key">{{ item[0] }}</span>
         <span class="item-type">{{ item[1] }}</span>
       </span>
     </div>
@@ -309,15 +311,20 @@ function handleItemClick(e: Event, item: [string, string]) {
   position: absolute;
   top: 0;
   left: 0;
-  background: rgba(250, 250, 250, 0.96); /* 更柔和的背景色 */
+  background: rgba(250, 250, 250, 0.96);
+  /* 更柔和的背景色 */
   color: #333;
   padding: 6px 0;
-  border-radius: 14px; /* 更圆润的边角 */
+  border-radius: 14px;
+  /* 更圆润的边角 */
   font-size: 14px;
   min-width: 180px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08), 0 2px 5px rgba(0, 0, 0, 0.05); /* 更自然的阴影 */
-  backdrop-filter: blur(12px); /* 增强模糊效果 */
-  border: none; /* 移除边框 */
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08), 0 2px 5px rgba(0, 0, 0, 0.05);
+  /* 更自然的阴影 */
+  backdrop-filter: blur(12px);
+  /* 增强模糊效果 */
+  border: none;
+  /* 移除边框 */
   overflow: hidden;
   transform-origin: top left;
   animation: dropdownFadeIn 0.2s ease-out;
@@ -328,6 +335,7 @@ function handleItemClick(e: Event, item: [string, string]) {
     opacity: 0;
     transform: scale(0.98);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -350,13 +358,16 @@ function handleItemClick(e: Event, item: [string, string]) {
 
 /* 高亮项样式 */
 .floating-tip .dropdown-item.active {
-  background-color: rgba(81, 91, 212, 0.08); /* 更现代的主题紫色，透明度低 */
-  color: #515bd4; /* Instagram 风格紫色调 */
+  background-color: rgba(81, 91, 212, 0.08);
+  /* 更现代的主题紫色，透明度低 */
+  color: #515bd4;
+  /* Instagram 风格紫色调 */
   font-weight: 500;
 }
 
 .floating-tip .dropdown-item.active .item-key {
-  color: #515bd4; /* 统一主题色 */
+  color: #515bd4;
+  /* 统一主题色 */
 }
 
 .floating-tip .dropdown-item.active .item-type {
@@ -365,13 +376,15 @@ function handleItemClick(e: Event, item: [string, string]) {
 }
 
 .floating-tip .item-key {
-  color: #262626; /* 更深的文本颜色，提高可读性 */
+  color: #262626;
+  /* 更深的文本颜色，提高可读性 */
   margin-right: 8px;
   font-weight: 500;
 }
 
 .floating-tip .item-type {
-  color: #737373; /* 更柔和的灰色 */
+  color: #737373;
+  /* 更柔和的灰色 */
   font-weight: normal;
   font-size: 13px;
 }
@@ -379,8 +392,10 @@ function handleItemClick(e: Event, item: [string, string]) {
 /* 标签统一样式 */
 :deep(.tag-item) {
   display: inline-flex;
-  background-color: rgba(81, 91, 212, 0.08); /* 匹配主题色 */
-  color: #515bd4; /* Instagram 风格紫色 */
+  background-color: rgba(81, 91, 212, 0.08);
+  /* 匹配主题色 */
+  color: #515bd4;
+  /* Instagram 风格紫色 */
   padding: 2px 6px;
   margin: 0 2px;
   font-size: 14px;
@@ -403,7 +418,8 @@ function handleItemClick(e: Event, item: [string, string]) {
   position: relative;
   margin-left: 1px;
   color: transparent;
-  caret-color: black; /* 使光标可见 */
+  caret-color: black;
+  /* 使光标可见 */
 }
 
 /* 确保标签后面的点号操作正常 */

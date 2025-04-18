@@ -1,33 +1,31 @@
 export class TagItem {
   content: string;
   isSelected: boolean;
-  private _nodes: HTMLSpanElement | null = null;
-  constructor(content: string) {
+  private parent?: HTMLElement | null;
+  constructor(content: string, parent?: HTMLElement | null) {
     this.content = content;
     this.isSelected = false
+    this.parent = parent;
   }
 
   nodes() {
-    const emptyNode = document.createTextNode('\u200B');
-    if (this._nodes) {
+    if (this.parent) {
+      const textNode = document.createTextNode(this.content)
+      return [textNode]
+    } else {
+      const emptyNode = document.createTextNode('\u200B');
+      const text = this.content
+      const spanElement = document.createElement('span');
+      spanElement.className = 'tag-item';
+      spanElement.innerText = text;
+      spanElement.setAttribute('data-value', text);
+      spanElement.setAttribute('data-path', '$' + text);
       return [
         emptyNode,
-        this._nodes,
-        emptyNode,
-      ];
+        spanElement,
+        emptyNode.cloneNode(),
+      ]
     }
-    const text = this.content
-    const spanElement = document.createElement('span');
-    this._nodes = spanElement;
-    spanElement.className = 'tag-item';
-    spanElement.innerText = text;
-    spanElement.setAttribute('data-value', text);
-      spanElement.setAttribute('data-path', '$' + text);
-    return [
-      emptyNode,
-      spanElement,
-      emptyNode.cloneNode(),
-    ]
   }
 
   insertByRange(range: Range) {
@@ -35,7 +33,7 @@ export class TagItem {
     nodes.forEach(node => {
       range.insertNode(node);
     })
-    const textNode = nodes[1].childNodes[0];
+    const textNode = this.parent ? nodes[0] : nodes[1].childNodes[0];
     range.setStartAfter(textNode);
     range.setEndAfter(textNode);
     range.collapse(true);

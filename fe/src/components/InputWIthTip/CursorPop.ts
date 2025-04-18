@@ -136,12 +136,12 @@ export class CursorPop {
       return false
     }
     selection.addRange(this.clonedRange);
-    
+
     // 等待DOM更新完成
     setTimeout(() => {
       this.insertTextAtCursor(value);
     }, 0);
-    
+
     return true;
 
   }
@@ -153,10 +153,10 @@ export class CursorPop {
     const items = this.floatTipDiv.querySelectorAll('.dropdown-item');
     if (this.activeItemIndex < items.length) {
       const activeItem = items[this.activeItemIndex] as HTMLElement;
-      
+
       // 确保输入区域获取焦点
       this.inputDiv.focus();
-      
+
       // 如果选择状态丢失，尝试恢复最后一个已知的选择
       const selection = this.getSelection();
       if (!selection.rangeCount) {
@@ -173,13 +173,13 @@ export class CursorPop {
         selection.addRange(range);
         this.selection = selection;
       }
-      
+
       // 等待DOM更新完成
       setTimeout(() => {
         const key = activeItem.dataset.key as string;
         this.insertTextAtCursor(key);
       }, 0);
-      
+
       return true;
     }
 
@@ -239,10 +239,9 @@ export class CursorPop {
     }
 
     const range = selection.getRangeAt(0).cloneRange();
-    const caretRect = range.getBoundingClientRect(); // 光标矩形位置
-    const containerRect = this.inputDiv.getBoundingClientRect(); // 容器矩形位置
+    const caretRect = range.getBoundingClientRect();
+    const containerRect = this.inputDiv.getBoundingClientRect();
 
-    // 计算光标相对容器的偏移
     const offsetX = caretRect.left - containerRect.left;
     const offsetY = caretRect.top - containerRect.top;
 
@@ -252,19 +251,16 @@ export class CursorPop {
   updatePosition() {
     const { x, y } = this.getCaretPositionRelativeToElement();
     this.floatTipDiv.style.left = `${x + 3}px`;
-    this.floatTipDiv.style.top = `${y + 20}px`; // 略微下移，避免遮挡光标
+    this.floatTipDiv.style.top = `${y + 20}px`;
 
-    // 确保下拉框不超出视口边界
     const rect = this.floatTipDiv.getBoundingClientRect();
     const viewportHeight = window.innerHeight;
     const viewportWidth = window.innerWidth;
 
-    // 如果下拉框底部超出视口
     if (rect.bottom > viewportHeight) {
-      this.floatTipDiv.style.top = `${y - rect.height - 5}px`; // 向上显示
+      this.floatTipDiv.style.top = `${y - rect.height - 5}px`;
     }
 
-    // 如果下拉框右侧超出视口
     if (rect.right > viewportWidth) {
       this.floatTipDiv.style.left = `${viewportWidth - rect.width - 10}px`;
     }
@@ -277,58 +273,44 @@ export class CursorPop {
       console.error("Cannot get selection for text insertion");
       return;
     }
-    
-    // 使用当前实时的选择状态，而不是缓存的
+
     const range = selection.getRangeAt(0);
     if (!range) {
       console.error("No range found");
       return;
     }
 
-    // 获取当前光标前的文本
     const beforeText = this.getTextBeforeCursor();
 
-    // 查找最后一个 $ 符号的位置
     const lastDollarIndex = beforeText.lastIndexOf('$');
     if (lastDollarIndex !== -1) {
       console.log('1. 找到 $ 符号，进行补全');
-      // 获取从 $ 到光标位置的文本
       const partialInput = beforeText.substring(lastDollarIndex);
 
-      // 检查是否是点号后面的情况（如 $fullname.last）
       const lastDotIndex = partialInput.lastIndexOf('.');
 
       if (lastDotIndex !== -1) {
         console.log('1.1 这是点号后面的补全情况');
-        // 这是点号后面的补全情况
-        const textAfterDot = partialInput.substring(lastDotIndex + 1); // 点号后的文本
+        const textAfterDot = partialInput.substring(lastDotIndex + 1);
 
-        // 如果选项以用户输入的部分开头，需要删除用户输入的部分
         if (text.startsWith(textAfterDot)) {
           console.log('1.1.1 这是点号后面的补全情况，删除已输入的部分');
-          // 创建一个新范围来选择从点号后到当前光标的文本
           const deleteRange = document.createRange();
           let currentNode = range.startContainer;
           let currentOffset = range.startOffset;
 
-          // 检查当前节点是否是文本节点
           if (currentNode.nodeType === Node.TEXT_NODE) {
-            // 计算要删除的字符数
             const charsToDelete = textAfterDot.length;
 
-            // 设置范围起始点为当前光标位置减去要删除的字符数
             deleteRange.setStart(currentNode, currentOffset - charsToDelete);
             deleteRange.setEnd(currentNode, currentOffset);
 
-            // 删除已输入的部分
             deleteRange.deleteContents();
           }
 
-          // 直接插入文本，而不是标签
           const textNode = document.createTextNode(text);
           range.insertNode(textNode);
 
-          // 将光标设置在文本节点之后
           range.setStartAfter(textNode);
           range.setEndAfter(textNode);
           selection.removeAllRanges();
@@ -337,39 +319,30 @@ export class CursorPop {
       } else {
         console.log('1.2 这是 $ 符号后的补全情况');
 
-        // 创建一个新范围来选择从 $ 符号（包含）到当前光标的文本
         const deleteRange = document.createRange();
         let currentNode = range.startContainer;
         let currentOffset = range.startOffset;
 
         if (currentNode.nodeType === Node.TEXT_NODE) {
-          // 计算要删除的字符数（包括$符号）
-          const charsToDelete = partialInput.length;
+          const parentNode = currentNode.parentNode as HTMLElement;
+          const parentTagItem = parentNode.classList.contains('tag-item') ? parentNode : null;
 
-          // 设置范围起始点为当前光标位置减去要删除的字符数
+          const charsToDelete = partialInput.length;
           deleteRange.setStart(currentNode, currentOffset - charsToDelete);
           deleteRange.setEnd(currentNode, currentOffset);
-
-          // 删除包括 $ 在内的所有已输入部分
           deleteRange.deleteContents();
 
-          const tagItem = new TagItem('$' + text);
+          const tagItem = new TagItem('$' + text, parentTagItem);
           tagItem.insertByRange(range);
-          // 将光标设置在零宽度空格之后
           selection.removeAllRanges();
           selection.addRange(range);
         }
       }
     } else {
       console.log('2. 没有找到 $ 符号，直接插入文本');
-      const tagItem = new TagItem(text);
-      tagItem.insertByRange(range);
-
-      selection.removeAllRanges();
-      selection.addRange(range);
+      throw new Error("No $ symbol found in the input");
     }
-    
-    // 更新内部保存的选择
+
     this.selection = selection;
   }
 
@@ -391,7 +364,6 @@ export class CursorPop {
   }
 
   getTextBeforeCursor(): string {
-    // 使用当前实时的选择状态，而不是可能过期的缓存
     const selection = this.getSelection();
     if (!selection) {
       console.error("No selection found");
@@ -402,21 +374,19 @@ export class CursorPop {
       return "";
     }
 
-    const range = selection.getRangeAt(0).cloneRange(); // 克隆当前 Range
-    range.selectNodeContents(this.inputDiv); // 将范围设置为整个内容区域
-    
-    // 添加安全检查，确保 anchorNode 不为 null
+    const range = selection.getRangeAt(0).cloneRange();
+    range.selectNodeContents(this.inputDiv);
+
     if (!selection.anchorNode) {
       console.error("Selection anchorNode is null");
       return "";
     }
-    
-    range.setEnd(selection.anchorNode, selection.anchorOffset); // 将结束点设置为光标位置
 
-    return range.toString(); // 获取光标之前的文本
+    range.setEnd(selection.anchorNode, selection.anchorOffset);
+
+    return range.toString();
   }
 
-  // 光标向右移动
   cursorRight() {
     const selection = this.selection;
     if (!selection || selection.rangeCount === 0) return;
@@ -424,35 +394,28 @@ export class CursorPop {
     const range = selection.getRangeAt(0);
     const node = range.startContainer;
 
-    // 检查当前光标是否在标签内
     let isAtTagEnd = false;
     let tagElement = null;
 
-    // 情况1: 光标在标签内的文本节点末尾
     if (node.nodeType === Node.TEXT_NODE && node.parentElement?.classList.contains('tag-item')) {
       tagElement = node.parentElement;
       const textContent = node.textContent || '';
       isAtTagEnd = range.startOffset >= textContent.length;
-    }
-    // 情况2: 光标直接在标签元素内(没有文本子节点的情况)
-    else if (node.nodeType === Node.ELEMENT_NODE && (node as Element).classList.contains('tag-item')) {
+    } else if (node.nodeType === Node.ELEMENT_NODE && (node as Element).classList.contains('tag-item')) {
       tagElement = node as HTMLElement;
       isAtTagEnd = true;
     }
 
-    // 如果光标在标签末尾，移动到标签后面
     if (isAtTagEnd && tagElement) {
-      // 创建新范围，位于标签之后
       const newRange = document.createRange();
       newRange.setStartAfter(tagElement);
-      newRange.collapse(true); // 折叠到起点
+      newRange.collapse(true);
 
-      // 应用新范围
       selection.removeAllRanges();
       selection.addRange(newRange);
-      return true; // 表示光标已移动
+      return true;
     }
 
-    return false; // 表示没有特殊处理，让浏览器默认行为生效
+    return false;
   }
 }
