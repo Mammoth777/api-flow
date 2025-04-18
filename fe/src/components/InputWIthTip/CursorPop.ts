@@ -6,6 +6,7 @@ export class CursorPop {
   isShown: boolean = false;
   private selection: Selection | null = null;
   private activeItemIndex: number = -1; // 改为公共属性，以便外部访问
+  private clonedRange: Range | null = null;
 
   getActiveItemIndex() {
     return this.activeItemIndex;
@@ -33,6 +34,8 @@ export class CursorPop {
   }
 
   show() {
+    const se = this.getSelection()
+    console.log(se, 'se')
     this.floatTipDiv.style.display = "block";
     this.isShown = true;
     this.activeItemIndex = -1; // 重置活动项索引
@@ -65,6 +68,18 @@ export class CursorPop {
 
       // 确保选中项在视口内
       this.scrollItemIntoView(activeItem);
+    }
+  }
+
+  cloneRange() {
+    const selection = this.getSelection();
+    if (!selection) {
+      console.error("Cannot get selection");
+      return
+    }
+    if (selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      this.clonedRange = range.cloneRange();
     }
   }
 
@@ -114,9 +129,13 @@ export class CursorPop {
   }
 
   confirmSelectionWithValue(value: string): boolean {
-    
-    // 确保输入区域获取焦点
-    this.inputDiv.focus();
+    const selection = this.selection!;
+    selection.removeAllRanges();
+    if (!this.clonedRange) {
+      console.error('clonedRange is null');
+      return false
+    }
+    selection.addRange(this.clonedRange);
     
     // 等待DOM更新完成
     setTimeout(() => {
@@ -139,25 +158,20 @@ export class CursorPop {
       this.inputDiv.focus();
       
       // 如果选择状态丢失，尝试恢复最后一个已知的选择
-      if (!window.getSelection()?.rangeCount) {
+      const selection = this.getSelection();
+      if (!selection.rangeCount) {
         console.warn("Selection lost, attempting to restore");
         // 如果没有有效的选择，将光标放在内容末尾
-        const selection = window.getSelection();
-        if (selection) {
-          const range = document.createRange();
-          if (this.inputDiv.lastChild) {
-            range.setStartAfter(this.inputDiv.lastChild);
-            range.collapse(true);
-          } else {
-            range.setStart(this.inputDiv, 0);
-          }
-          selection.removeAllRanges();
-          selection.addRange(range);
-          this.selection = selection;
+        const range = document.createRange();
+        if (this.inputDiv.lastChild) {
+          range.setStartAfter(this.inputDiv.lastChild);
+          range.collapse(true);
+        } else {
+          range.setStart(this.inputDiv, 0);
         }
-      } else {
-        // 保存当前的选择状态
-        this.selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        this.selection = selection;
       }
       
       // 等待DOM更新完成
@@ -361,7 +375,7 @@ export class CursorPop {
 
   getCaretPosition(): number {
     let caretOffset = 0;
-    const selection = window.getSelection();
+    const selection = this.getSelection();
     if (!selection) {
       console.error("Cannot get selection");
       return 0;
@@ -378,7 +392,7 @@ export class CursorPop {
 
   getTextBeforeCursor(): string {
     // 使用当前实时的选择状态，而不是可能过期的缓存
-    const selection = window.getSelection();
+    const selection = this.getSelection();
     if (!selection) {
       console.error("No selection found");
       return "";

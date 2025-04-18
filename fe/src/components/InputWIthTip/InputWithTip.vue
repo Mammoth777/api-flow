@@ -153,49 +153,26 @@ onMounted(() => {
         }, 10)
       }
     }
-
-    // 2. 生成tag
-    const inputEvt = e as InputEvent
-    console.log(inputEvt.data, 'inputEvt')
-  });
-
-  // 处理标签点击事件，确保标签的正确交互
-  inputElm.addEventListener('click', (e: MouseEvent) => {
-    // 获取点击位置
-    const target = e.target as HTMLElement;
-    
-    // 如果点击了标签，浏览器会自动处理光标位置
-    if (target === inputElm) {
-      // 找到点击位置最近的文本位置
-      const selection = window.getSelection();
-      if (selection) {
-        // 获取点击的准确位置
-        const range = document.caretRangeFromPoint(e.clientX, e.clientY);
-        if (range) {
-          // 应用新的选择范围
-          selection.removeAllRanges();
-          selection.addRange(range);
-          e.preventDefault(); // 防止默认的点击行为干扰我们的位置设置
-        }
-      }
-    }
   });
 
   // 改用keydown事件以获得更好的按键捕获
   inputElm.addEventListener('keydown', (e: KeyboardEvent) => {
+    const moveOutOfTagKeys = ['ArrowRight']
+    const moveDropdownHighlightKeys = ['ArrowUp', 'ArrowDown']
+    const confirmSelectKeys = ['Enter', 'Tab']
+    const hideMenuKeys = ['Escape']
     // 对于上下键，需要阻止默认行为，防止光标移动
-    if ((e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Enter' || e.key === 'Tab') && popper.isShown) {
+    if (([...moveOutOfTagKeys, ...moveDropdownHighlightKeys, ...confirmSelectKeys].includes(e.key)) && popper.isShown) {
       e.preventDefault();
       e.stopPropagation();
     }
     
     // 处理右箭头键，使光标能够从标签内移出
-    if (e.key === 'ArrowRight') {
+    if (moveOutOfTagKeys.includes(e.key)) {
       console.log('right arrow')
       popper.cursorRight()
     }
-
-    if (e.key === 'Enter' || e.key === 'Tab') {
+    if (confirmSelectKeys.includes(e.key)) {
       // Enter或Tab - 选中当前高亮项
       if (popper.isShown) {
         const selected = popper.confirmSelection();
@@ -216,7 +193,7 @@ onMounted(() => {
           e.preventDefault();
         }
       }
-    } else if (e.key === 'Escape') {
+    } else if (hideMenuKeys.includes(e.key)) {
       // ESC - 隐藏下拉菜单
       if (popper.isShown) {
         popper.hide();
@@ -267,19 +244,12 @@ onMounted(() => {
 function highlightItem(index: number) {
   if (popper && popper.isShown) {
     popper.highlightItem(index);
+    popper.cloneRange();
   }
 }
 
-function handleItemClick(item: [string, string]) {
-  // 记录当前选中项的索引
-  const index = dropdownList.value.findIndex(i => i[0] === item[0]);
-  if (index >= 0) {
-    popper.highlightItem(index);
-  }
-  
-  // 确保输入区域获得焦点
-  inputarea.value?.focus();
-  
+function handleItemClick(e: Event, item: [string, string]) {
+  e.stopPropagation();
   // 使用requestAnimationFrame确保DOM更新后再插入文本
   popper.confirmSelectionWithValue(item[0]);
   
@@ -296,7 +266,7 @@ function handleItemClick(item: [string, string]) {
       <span 
         v-for="(item, index) in dropdownList" 
         :key="index"
-        @click="handleItemClick(item)"
+        @click="e => handleItemClick(e, item)"
         @mouseover="highlightItem(index)"
         class="dropdown-item"
         role="option"
