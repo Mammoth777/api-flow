@@ -24,6 +24,7 @@
       <NodeInputConfig 
         :input-fields="inputFields" 
         :modelValue="nodeConfig" 
+        :suggestions="suggestions"
         @update:modelValue="updateConfig"
       />
     </div>
@@ -87,7 +88,8 @@ const emit = defineEmits([
   'toggle-advanced-mode',
   'update-advanced-config'
 ]);
-console.log('NodeInputSection.vue', props);
+
+const suggestions = {}
 const systemNodeType = computed(() => isSystemNode(props.nodeType));
 
 // 本地保存configStr，避免直接修改props

@@ -7,13 +7,13 @@
       </div>
       
       <!-- 根据字段类型显示不同的输入控件 -->
-      <!-- 字符串类型输入 -->
-      <input 
+      <!-- 字符串类型输入 - 使用 InputWithTip 替换 -->
+      <InputWithTip 
         v-if="field.type === 'string'" 
-        type="text" 
-        v-model="nodeConfig[field.field]" 
-        @input="debouncedUpdate"
-        :placeholder="field.desc" 
+        v-model="nodeConfig[field.field]"
+        :placeholder="field.desc"
+        :suggestions="suggestions"
+        @update:modelValue="debouncedUpdate"
       />
       
       <!-- 数字类型输入 -->
@@ -81,6 +81,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue';
 import { InputField } from './types';
+import InputWithTip from '../InputWIthTip/InputWithTip.vue';
 
 // 接收的属性
 const props = defineProps({
@@ -91,6 +92,11 @@ const props = defineProps({
   },
   // 节点配置，用于双向绑定
   modelValue: {
+    type: Object,
+    default: () => ({})
+  },
+  // 为 InputWithTip 提供的建议数据结构
+  suggestions: {
     type: Object,
     default: () => ({})
   }
