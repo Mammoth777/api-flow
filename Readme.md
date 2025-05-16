@@ -272,3 +272,17 @@ API节点请求体示例:
   ]
 }
 ```
+
+## 开发
+
+```bash
+docker run --name geminate-mysql -p 3306:3306 -e MYSQL_ALLOW_EMPTY_PASSWORD=yes -d mysql
+docker exec -it geminate-mysql mysql -u root -e "CREATE DATABASE api_flow;"
+go run main.go
+```
+
+```bash
+cd fe
+pnpm i
+pnpm run dev
+```
